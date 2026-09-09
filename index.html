@@ -60,15 +60,16 @@
 
 <div id="fixed-search-hud"><button class="inverted" onclick="openSearchModal()">[?] UNIVERSAL SEARCH</button></div>
 
+<!-- UNIVERSAL SEARCH MODAL WITH FULL ACCOUNT DETAIL EXPANSION & HISTORY ICON -->
 <div id="search-modal">
   <div class="box" style="border: 2px solid var(--fg); height: 95vh; display:flex; flex-direction:column; gap:8px;">
-    <div class="box-title"><span>UNIVERSAL SEARCH</span><span onclick="closeSearchModal()" style="cursor:pointer; text-decoration:underline;">[CLOSE X]</span></div>
+    <div class="box-title"><span>UNIVERSAL SEARCH & INSPECTION DESK</span><span onclick="closeSearchModal()" style="cursor:pointer; text-decoration:underline;">[CLOSE X]</span></div>
     <div class="grid-2">
       <div><select id="search-criteria" onchange="runSearch()"><option value="accNo" selected>1. 11-DIGIT ACC NO</option><option value="mobile">2. MOBILE NUMBER</option><option value="name">3. HOLDER NAME</option></select></div>
       <div><input type="text" id="search-query" placeholder="QUERY..." oninput="runSearch()" /></div>
     </div>
     <div style="flex:1; overflow-y:auto; border-top:1px dashed var(--fg); margin-top:6px;">
-      <table><thead><tr><th>ACC NO</th><th>HOLDER</th><th>MOBILE</th><th>BAL</th><th>ACT</th></tr></thead><tbody id="search-results-body"></tbody></table>
+      <table><thead><tr><th>ACC NO</th><th>HOLDER & DETAILS</th><th>CONTACT</th><th>BAL</th><th>ACTION</th></tr></thead><tbody id="search-results-body"></tbody></table>
     </div>
   </div>
 </div>
@@ -83,6 +84,7 @@
     <div id="cloud-sync-status" class="dim">SYNC: IDLE</div>
   </div>
 
+  <!-- LOGIN & REGISTRATION GATEWAY -->
   <div class="view-page" id="page-login" style="display: flex;">
     <div class="box" id="login-box">
       <div class="box-title">OPERATOR LOGON</div>
@@ -90,15 +92,25 @@
         <div class="grid-2"><input type="text" id="inp-uid" placeholder="ID (E.G. ADMIN)" required /><input type="password" id="inp-pin" placeholder="PIN" required /></div>
         <button type="submit" class="inverted">[ AUTHORIZE ]</button>
       </form>
-      <div style="margin-top:10px; text-align:right; font-size:0.75rem;"><span style="text-decoration:underline; cursor:pointer;" onclick="toggleAuth()">APPLY FOR ACCESS</span></div>
+      <div style="margin-top:10px; display:flex; justify-content:space-between; font-size:0.75rem;">
+        <span style="text-decoration:underline; cursor:pointer;" onclick="toggleAuth()">APPLY FOR OPERATOR ACCESS</span>
+        <span style="text-decoration:underline; cursor:pointer;" onclick="openOnlineRegModal()">ONLINE REGISTRATION DESK</span>
+      </div>
     </div>
+
+    <!-- ONLINE OPERATOR REGISTRATION FORM -->
     <div class="box" id="reg-box" style="display:none; border-style:dashed;">
-      <div class="box-title">NEW OPERATOR REGISTRATION</div>
-      <form onsubmit="handleReg(event)" style="display:flex; flex-direction:column; gap:8px;">
-        <div class="grid-2"><input type="text" id="reg-uid" placeholder="DESIRED ID" required /><input type="password" id="reg-pin" placeholder="CREATE PIN" required /></div>
-        <button type="submit">[ SUBMIT TO ADMIN ]</button>
+      <div class="box-title">NEW OPERATOR REGISTRATION (ROUTED TO ADMIN)</div>
+      <form onsubmit="handleOnlineReg(event)" style="display:flex; flex-direction:column; gap:8px;">
+        <div class="grid-2"><input type="text" id="reg-uid" placeholder="DESIRED USER ID" required /><input type="password" id="reg-pin" placeholder="CREATE PIN" required /></div>
+        <div class="grid-2">
+          <input type="tel" id="reg-phone" placeholder="MOBILE NO (FOR SMS/OTP)" required />
+          <select id="reg-otp-mode"><option value="DIRECT">WITHOUT OTP</option><option value="OTP">WITH TXT MESSAGE APP OTP</option></select>
+        </div>
+        <div id="reg-otp-row" style="display:none;"><input type="text" id="reg-otp-code" placeholder="ENTER OTP FROM TXT MESSAGE APP" /></div>
+        <button type="submit">[ SUBMIT REGISTRATION REQUEST ]</button>
       </form>
-      <div style="margin-top:10px; text-align:right; font-size:0.75rem;"><span style="text-decoration:underline; cursor:pointer;" onclick="toggleAuth()">BACK</span></div>
+      <div style="margin-top:10px; text-align:right; font-size:0.75rem;"><span style="text-decoration:underline; cursor:pointer;" onclick="toggleAuth()">BACK TO LOGON</span></div>
     </div>
   </div>
 
@@ -119,10 +131,10 @@
   </div>
 
   <div class="view-page" id="page-acc">
-    <!-- HYBRID CONTACT IMPORT ENGINE RESTORED -->
+    <!-- HYBRID CONTACT & VCF PULLING ENGINE -->
     <div class="box" style="border: 2px dashed var(--fg);">
-      <div class="box-title">HYBRID CONTACT IMPORT ENGINE</div>
-      <p class="dim" style="font-size:0.7rem; margin-bottom:10px;">1. SELECT SPECIFIC CONTACTS DIRECTLY FROM PHONE.<br>2. BULK IMPORT ENTIRE ADDRESS BOOK VIA .VCF FILE.</p>
+      <div class="box-title">HYBRID CONTACT IMPORT & PULLING ENGINE</div>
+      <p class="dim" style="font-size:0.7rem; margin-bottom:10px;">1. SELECT SPECIFIC CONTACTS DIRECTLY FROM DEVICE.<br>2. BULK IMPORT ENTIRE ADDRESS BOOK VIA .VCF FILE.</p>
       <div class="grid-2">
         <button class="inverted" onclick="importMultipleContacts()">[ CHOOSE CONTACTS ]</button>
         <button class="inverted" onclick="document.getElementById('vcf-upload').click()">[ IMPORT .VCF ]</button>
@@ -130,35 +142,43 @@
       <input type="file" id="vcf-upload" accept=".vcf" style="display:none;" onchange="processVCF(event)" />
     </div>
 
+    <!-- MANUAL ACCOUNT REGISTRATION WITH OTP TOGGLE -->
     <div class="box">
       <div class="box-title">MANUAL ACCOUNT REGISTRATION</div>
-      <form onsubmit="manualAccount(event)" class="grid-3">
-        <input type="text" id="acc-name" placeholder="HOLDER NAME" required />
-        <input type="text" id="acc-father" placeholder="FATHER'S NAME" />
-        <input type="tel" id="acc-phone" placeholder="MOBILE NO" required />
-        <input type="text" id="acc-email" placeholder="EMAIL (OPTIONAL)" />
+      <form onsubmit="manualAccount(event)" style="display:flex; flex-direction:column; gap:8px;">
+        <div class="grid-3">
+          <input type="text" id="acc-name" placeholder="HOLDER NAME" required />
+          <input type="text" id="acc-father" placeholder="FATHER'S NAME" />
+          <input type="tel" id="acc-phone" placeholder="MOBILE NO" required />
+        </div>
+        <div class="grid-3">
+          <input type="text" id="acc-email" placeholder="EMAIL (OPTIONAL)" />
+          <select id="acc-sms"><option value="OFF" selected>SMS ALERTS: OFF (TOGGLE)</option><option value="ON">SMS ALERTS: ON</option></select>
+          <select id="acc-auth-mode" onchange="toggleAccountOtpBox()"><option value="DIRECT">CREATE WITHOUT OTP</option><option value="OTP">VERIFY VIA TXT MESSAGE APP OTP</option></select>
+        </div>
         <textarea id="acc-address" placeholder="PHYSICAL ADDRESS" rows="1"></textarea>
-        <select id="acc-sms"><option value="OFF" selected>SMS ALERTS: OFF</option><option value="ON">SMS ALERTS: ON</option></select>
-        <button type="submit" style="grid-column: span 3;">[ GENERATE A/C ]</button>
+        <div id="acc-otp-box" style="display:none;"><input type="text" id="acc-otp-input" placeholder="ENTER OTP SENT VIA TXT MESSAGE APP" /></div>
+        <button type="submit" class="inverted">[ GENERATE A/C / QUEUE REQUEST ]</button>
       </form>
     </div>
 
+    <!-- ADMIN MODIFICATION / EDIT DESK -->
     <div class="box" id="box-edit-acc" style="display:none; border: 2px solid var(--fg);">
-      <div class="box-title"><span>ADMIN MODIFICATION DESK</span><span onclick="closeEditAcc()" style="cursor:pointer; text-decoration:underline;">[CANCEL]</span></div>
+      <div class="box-title"><span>ACCOUNT MODIFICATION DESK</span><span onclick="closeEditAcc()" style="cursor:pointer; text-decoration:underline;">[CANCEL]</span></div>
       <form onsubmit="saveAccEdit(event)" style="display:flex; flex-direction:column; gap:8px;">
         <div class="grid-2"><input type="text" id="edit-accno" readonly /><input type="text" id="edit-bal" readonly /></div>
         <div class="grid-2"><input type="text" id="edit-name" required /><input type="text" id="edit-father" required /></div>
         <div class="grid-2"><input type="tel" id="edit-phone" required /><input type="text" id="edit-email" /></div>
         <div class="grid-2"><textarea id="edit-address" rows="2"></textarea><select id="edit-sms"><option value="ON">SMS: ON</option><option value="OFF">SMS: OFF</option></select></div>
-        <button type="submit" class="inverted">[ COMMIT EDIT ]</button>
+        <button type="submit" class="inverted">[ SUBMIT EDIT FOR ADMIN APPROVAL ]</button>
       </form>
     </div>
 
     <div class="box">
-      <div class="box-title">RECORD DIRECTORY</div>
+      <div class="box-title">RECORD DIRECTORY (PENDING / APPROVED)</div>
       <div class="table-container">
         <table>
-          <thead><tr><th>11-DIGIT ACC</th><th>HOLDER DETAILS</th><th>CONTACT & SMS</th><th>BAL</th><th>ACT</th></tr></thead>
+          <thead><tr><th>11-DIGIT ACC</th><th>HOLDER & DETAILS</th><th>CONTACT & SMS</th><th>BAL</th><th>ACTIONS</th></tr></thead>
           <tbody id="body-accs"></tbody>
         </table>
       </div>
@@ -184,9 +204,20 @@
   </div>
 
   <div class="view-page" id="page-admin">
+    <div class="box" style="margin-bottom:12px;">
+      <div class="box-title">PENDING OPERATOR REGISTRATIONS</div>
+      <div class="table-container">
+        <table><thead><tr><th>USER ID</th><th>PHONE</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody id="body-pending-users"></tbody></table>
+      </div>
+    </div>
+    <div class="box" style="margin-bottom:12px;">
+      <div class="box-title">PENDING ACCOUNT EDIT & DELETE REQUESTS</div>
+      <div class="table-container">
+        <table><thead><tr><th>REQ ID</th><th>ACC NO</th><th>ACTION TYPE</th><th>DETAILS</th><th>APPROVE / REJECT</th></tr></thead><tbody id="body-pending-edits"></tbody></table>
+      </div>
+    </div>
     <div class="box">
-      <div class="box-title">ADMINISTRATIVE MASTER CONTROLS</div>
-      <div class="bold" style="margin-bottom:6px;">> ACTIVE PERSONNEL & SESSIONS</div>
+      <div class="box-title">ACTIVE PERSONNEL & ACCESS CONTROL</div>
       <div class="table-container">
         <table><thead><tr><th>USER ID</th><th>ROLE</th><th>STATUS</th><th>LAST IP</th><th>ACTIONS</th></tr></thead><tbody id="body-users"></tbody></table>
       </div>
@@ -204,7 +235,7 @@
 </div>
 
 <script>
-const DB_KEY = 'CRIS_BW_MASTER_FINAL_V19';
+const DB_KEY = 'CRIS_BW_MASTER_FINAL_V20';
 const SERIAL_BASE = 10000000000;
 const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('cris_local_mesh') : null;
 if(syncChannel) { syncChannel.onmessage = (e) => { if(e.data === 'RELOAD_DB') init(true); }; }
@@ -226,11 +257,16 @@ async function fetchClientIP() {
   }
 }
 
-let db = { users: [{ id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', lastIp: 'N/A' }], accounts: [], ledger: [], editRequests: [] };
+let db = { 
+  users: [{ id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', lastIp: 'N/A', phone: '0000000000' }], 
+  accounts: [], 
+  ledger: [], 
+  editRequests: [] 
+};
 
 function init(isSilent = false) { 
   const local = localStorage.getItem(DB_KEY); 
-  if (local) { try { db = JSON.parse(local); if(!db.editRequests) db.editRequests = []; } catch(e) {} }
+  if (local) { try { db = JSON.parse(local); if(!db.editRequests) db.editRequests = []; if(!db.users) db.users = []; } catch(e) {} }
   
   const savedSession = localStorage.getItem(DB_KEY + '_SESSION');
   if (savedSession && !session) {
@@ -268,6 +304,10 @@ function toggleAuth() {
   if(lb.style.display==='none'){ lb.style.display='block'; rb.style.display='none'; } else { lb.style.display='none'; rb.style.display='block'; }
 }
 
+function openOnlineRegModal() {
+  toggleAuth();
+}
+
 function showPage(id) {
   document.querySelectorAll('.view-page').forEach(e=>e.style.display='none');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
@@ -278,14 +318,15 @@ function showPage(id) {
 }
 
 function handleLogon(e) {
-  e.preventDefault(); const uid=document.getElementById('inp-uid').value.trim().toUpperCase(), pin=document.getElementById('inp-pin').value.trim();
+  e.preventDefault(); 
+  const uid=document.getElementById('inp-uid').value.trim().toUpperCase(), pin=document.getElementById('inp-pin').value.trim();
   let u = db.users.find(x=>x.id===uid && x.pin===pin);
   if(!u && uid==='ADMIN' && pin==='9999') {
-    u={id:'ADMIN',pin:'9999',role:'ADMIN',status:'ACTIVE',lastIp: currentClientIP};
+    u={id:'ADMIN',pin:'9999',role:'ADMIN',status:'ACTIVE',lastIp: currentClientIP, phone:'0000000000'};
     db.users.push(u);
   }
   if(!u){ alert('INVALID CREDENTIALS'); return; }
-  if(u.status==='PENDING'){ alert('AWAITING ADMIN APPROVAL'); return; }
+  if(u.status==='PENDING'){ alert('AWAITING ADMIN APPROVAL. ACCESS RESTRICTED.'); return; }
   if(u.status==='SUSPENDED'){ alert('ACCOUNT SUSPENDED'); return; }
 
   u.lastIp = currentClientIP;
@@ -296,6 +337,28 @@ function handleLogon(e) {
   document.getElementById('app-nav').style.display='flex';
   document.getElementById('btn-admin').style.display=(u.role==='ADMIN')?'block':'none';
   showPage('page-dash'); syncUI();
+}
+
+function handleOnlineReg(e) {
+  e.preventDefault();
+  const uid = document.getElementById('reg-uid').value.trim().toUpperCase();
+  const pin = document.getElementById('reg-pin').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim().replace(/[^0-9]/g,'');
+  const mode = document.getElementById('reg-otp-mode').value;
+
+  if(db.users.some(x => x.id === uid)) { alert('USER ID ALREADY TAKEN'); return; }
+
+  if(mode === 'OTP') {
+    const generatedOtp = Math.floor(1000 + Math.random() * 9000);
+    alert(`[TXT MESSAGE APP SIMULATION]\nOTP ${generatedOtp} sent to mobile: ${phone}`);
+    const entered = prompt('ENTER THE OTP RECEIVED FROM YOUR TXT MESSAGE APP:');
+    if(entered !== generatedOtp.toString()) { alert('INVALID OTP. REGISTRATION CANCELLED.'); return; }
+  }
+
+  db.users.push({ id: uid, pin: pin, role: 'OPERATOR', status: 'PENDING', lastIp: currentClientIP, phone: phone });
+  save();
+  alert('REGISTRATION SUBMITTED SUCCESSFULLY! ACCESS GRANTED PENDING FINAL ADMIN APPROVAL.');
+  toggleAuth();
 }
 
 function logout() { 
@@ -312,10 +375,10 @@ function getSerial() {
   return (max+1).toString();
 }
 
-/* --- INDIVIDUAL & VCF CONTACT PULLING METHODS --- */
+/* --- HYBRID CONTACT & VCF PULLING --- */
 async function importMultipleContacts() {
   if (!('contacts' in navigator && 'ContactsManager' in window)) { 
-    alert('DEVICE CONTACT API NOT SUPPORTED ON THIS BROWSER. USE .VCF IMPORT INSTEAD.'); 
+    alert('DEVICE CONTACT API NOT SUPPORTED. USE .VCF IMPORT INSTEAD.'); 
     return; 
   }
   try {
@@ -332,15 +395,13 @@ async function importMultipleContacts() {
         addStr = [a.street, a.city, a.region, a.postalCode, a.country].filter(Boolean).join(', ').toUpperCase(); 
       }
       if(!db.accounts.some(acc => acc.phone === phone)) {
-        db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'IMPORTED', phone: phone, email: email, address: addStr, balance: 0, smsOptIn: false }); 
+        db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'IMPORTED', phone: phone, email: email, address: addStr, balance: 0, status: 'APPROVED', smsOptIn: false }); 
         added++;
       }
     });
     save(); 
     alert(`SUCCESS: IMPORTED ${added} RECORDS DIRECTLY FROM DEVICE CONTACTS.`);
-  } catch(err) {
-    console.error(err);
-  }
+  } catch(err) { console.error(err); }
 }
 
 function processVCF(e) {
@@ -359,7 +420,7 @@ function processVCF(e) {
         const name = nameMatch[1].trim().toUpperCase(); 
         const phone = phoneMatch[1].replace(/[^0-9]/g, '');
         if (phone.length >= 7 && !db.accounts.some(a => a.phone === phone)) {
-          db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'VCF_IMPORT', phone: phone, email: 'N/A', address: 'N/A', balance: 0, smsOptIn: false }); 
+          db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'VCF_IMPORT', phone: phone, email: 'N/A', address: 'N/A', balance: 0, status: 'APPROVED', smsOptIn: false }); 
           added++;
         }
       }
@@ -371,36 +432,114 @@ function processVCF(e) {
   reader.readAsText(fileInput.files[0]);
 }
 
+function toggleAccountOtpBox() {
+  const mode = document.getElementById('acc-auth-mode').value;
+  document.getElementById('acc-otp-box').style.display = (mode === 'OTP') ? 'block' : 'none';
+}
+
 function manualAccount(e) {
   e.preventDefault(); 
+  const phone = document.getElementById('acc-phone').value.trim().replace(/[^0-9]/g,'');
+  const mode = document.getElementById('acc-auth-mode').value;
+
+  if(mode === 'OTP') {
+    const otp = Math.floor(1000 + Math.random() * 9000);
+    alert(`[TXT MESSAGE APP SIMULATION]\nAccount Creation OTP: ${otp} sent to ${phone}`);
+    const entered = prompt('ENTER OTP FROM TXT MESSAGE APP:');
+    if(entered !== otp.toString()) { alert('INVALID OTP. CREATION CANCELLED.'); return; }
+  }
+
   const accNo = getSerial();
+  const isPending = session && session.status === 'PENDING';
+  
   db.accounts.push({ 
     accountNumber: accNo, 
     holderName: document.getElementById('acc-name').value.trim().toUpperCase(), 
     fatherName: document.getElementById('acc-father').value.trim().toUpperCase()||'N/A', 
-    phone: document.getElementById('acc-phone').value.trim().replace(/[^0-9]/g,''), 
+    phone: phone, 
     email: document.getElementById('acc-email').value.trim().toUpperCase()||'N/A', 
     address: document.getElementById('acc-address').value.trim().toUpperCase()||'N/A', 
     balance: 0, 
+    status: isPending ? 'PENDING' : 'APPROVED',
     smsOptIn: (document.getElementById('acc-sms').value==='ON') 
   });
-  db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_OPEN', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: 'NEW ACCOUNT OPENED' });
+  
+  db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_OPEN', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: isPending ? 'ACCOUNT CREATED (PENDING APPROVAL)' : 'NEW ACCOUNT OPENED' });
   save(); 
-  alert(`A/C CREATED: ${accNo}`); 
+  alert(isPending ? `A/C CREATED PENDING ADMIN APPROVAL: ${accNo}` : `A/C CREATED & APPROVED: ${accNo}`); 
   e.target.reset();
+  document.getElementById('acc-otp-box').style.display = 'none';
 }
 
-/* --- ACCOUNT DELETE FEATURE --- */
-function deleteAccount(accNo) {
-  if (!session || session.role !== 'ADMIN') {
-    alert('PERMISSION DENIED: ONLY ADMIN CAN DELETE ACCOUNTS.');
-    return;
-  }
-  if (confirm(`WARNING: ARE YOU SURE YOU WANT TO DELETE ACCOUNT ${accNo}?`)) {
-    db.accounts = db.accounts.filter(a => a.accountNumber !== accNo);
-    db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_DEL', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: 'ACCOUNT DELETED BY ADMIN' });
+/* --- ACCOUNT EDIT & DELETE REQUESTS ROUTED TO ADMIN --- */
+let editingAccNo = null;
+function openEditAcc(accNo) {
+  const acc = db.accounts.find(a => a.accountNumber === accNo);
+  if(!acc) return;
+  editingAccNo = accNo;
+  document.getElementById('edit-accno').value = acc.accountNumber;
+  document.getElementById('edit-bal').value = acc.balance.toFixed(2);
+  document.getElementById('edit-name').value = acc.holderName;
+  document.getElementById('edit-father').value = acc.fatherName;
+  document.getElementById('edit-phone').value = acc.phone;
+  document.getElementById('edit-email').value = acc.email;
+  document.getElementById('edit-address').value = acc.address;
+  document.getElementById('edit-sms').value = acc.smsOptIn ? 'ON' : 'OFF';
+  document.getElementById('box-edit-acc').style.display = 'block';
+}
+
+function closeEditAcc() {
+  document.getElementById('box-edit-acc').style.display = 'none';
+  editingAccNo = null;
+}
+
+function saveAccEdit(e) {
+  e.preventDefault();
+  if(!editingAccNo) return;
+  const updatedData = {
+    accountNumber: editingAccNo,
+    holderName: document.getElementById('edit-name').value.trim().toUpperCase(),
+    fatherName: document.getElementById('edit-father').value.trim().toUpperCase(),
+    phone: document.getElementById('edit-phone').value.trim().replace(/[^0-9]/g,''),
+    email: document.getElementById('edit-email').value.trim().toUpperCase(),
+    address: document.getElementById('edit-address').value.trim().toUpperCase(),
+    smsOptIn: (document.getElementById('edit-sms').value === 'ON')
+  };
+
+  if(session && session.role === 'ADMIN') {
+    const acc = db.accounts.find(a => a.accountNumber === editingAccNo);
+    if(acc) {
+      Object.assign(acc, updatedData);
+      db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: `${session.id} (ADMIN)`, narrative: 'DIRECT ADMIN EDIT' });
+      save();
+      alert('ACCOUNT UPDATED SUCCESSFULLY.');
+    }
+  } else {
+    if(!db.editRequests) db.editRequests = [];
+    db.editRequests.push({ id: 'REQ_' + Date.now(), type: 'EDIT', accNo: editingAccNo, data: updatedData, operator: session.id });
     save();
-    alert(`ACCOUNT ${accNo} DELETED SUCCESSFULLY.`);
+    alert('EDIT REQUEST SUBMITTED TO ADMIN FOR APPROVAL.');
+  }
+  closeEditAcc();
+  syncUI();
+}
+
+function requestDeleteAccount(accNo) {
+  if(session && session.role === 'ADMIN') {
+    if(confirm(`ADMIN ACTION: DELETE ACCOUNT ${accNo}?`)) {
+      db.accounts = db.accounts.filter(a => a.accountNumber !== accNo);
+      db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_DEL', amount: 0, operator: `${session.id} (ADMIN)`, narrative: 'ACCOUNT DELETED' });
+      save();
+      alert('ACCOUNT DELETED.');
+      syncUI();
+    }
+  } else {
+    if(confirm(`SUBMIT DELETE REQUEST FOR ACCOUNT ${accNo} TO ADMIN?`)) {
+      if(!db.editRequests) db.editRequests = [];
+      db.editRequests.push({ id: 'REQ_' + Date.now(), type: 'DELETE', accNo: accNo, operator: session.id });
+      save();
+      alert('DELETE REQUEST SENT TO ADMIN.');
+    }
   }
 }
 
@@ -418,33 +557,137 @@ function processTx(e) {
   document.getElementById('tx-amt').value=''; document.getElementById('tx-ref').value='';
 }
 
+/* --- ADMIN PANEL RENDERING --- */
 function renderAdmin() {
+  // Pending Users
+  const pUsersBody = document.getElementById('body-pending-users'); pUsersBody.innerHTML = '';
+  const pendingUsers = db.users.filter(u => u.status === 'PENDING');
+  if(!pendingUsers.length) { pUsersBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">NO PENDING REGISTRATIONS</td></tr>'; }
+  else {
+    pendingUsers.forEach(u => {
+      pUsersBody.innerHTML += `<tr><td class="bold">${u.id}</td><td>${u.phone}</td><td>${u.status}</td><td><button onclick="approveUser('${u.id}')">APPROVE</button> <button onclick="rejectUser('${u.id}')" style="border-color:#ff4444; color:#ff4444;">REJECT</button></td></tr>`;
+    });
+  }
+
+  // Pending Edits / Deletes
+  const pEditsBody = document.getElementById('body-pending-edits'); pEditsBody.innerHTML = '';
+  if(!db.editRequests || !db.editRequests.length) { pEditsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO PENDING MODIFICATION REQUESTS</td></tr>'; }
+  else {
+    db.editRequests.forEach((req, idx) => {
+      pEditsBody.innerHTML += `<tr><td>${req.id}</td><td class="bold">${req.accNo}</td><td>${req.type}</td><td>BY: ${req.operator}</td><td><button onclick="approveEditReq(${idx})">APPROVE</button> <button onclick="rejectEditReq(${idx})" style="border-color:#ff4444; color:#ff4444;">REJECT</button></td></tr>`;
+    });
+  }
+
+  // Active Users
   const uBody=document.getElementById('body-users'); uBody.innerHTML='';
-  db.users.forEach((u, i) => {
-    uBody.innerHTML+=`<tr><td class="bold">${u.id}</td><td>${u.role}</td><td>${u.status}</td><td class="dim">${u.lastIp||'N/A'}</td><td>-</td></tr>`;
+  db.users.forEach((u) => {
+    const act = (u.id !== 'ADMIN') ? `<button onclick="toggleUserSuspend('${u.id}')">${u.status==='SUSPENDED'?'UNSUSPEND':'SUSPEND'}</button>` : '<span class="dim">SYSTEM</span>';
+    uBody.innerHTML+=`<tr><td class="bold">${u.id}</td><td>${u.role}</td><td>${u.status}</td><td class="dim">${u.lastIp||'N/A'}</td><td>${act}</td></tr>`;
   });
 }
 
+function approveUser(uid) {
+  const u = db.users.find(x => x.id === uid);
+  if(u) { u.status = 'ACTIVE'; save(); alert(`OPERATOR ${uid} APPROVED.`); renderAdmin(); }
+}
+function rejectUser(uid) {
+  db.users = db.users.filter(x => x.id !== uid);
+  save(); alert(`OPERATOR ${uid} REJECTED & REMOVED.`); renderAdmin();
+}
+function toggleUserSuspend(uid) {
+  const u = db.users.find(x => x.id === uid);
+  if(u) { u.status = (u.status === 'SUSPENDED') ? 'ACTIVE' : 'SUSPENDED'; save(); renderAdmin(); }
+}
+
+function approveEditReq(idx) {
+  const req = db.editRequests[idx];
+  if(req.type === 'EDIT') {
+    const acc = db.accounts.find(a => a.accountNumber === req.accNo);
+    if(acc) Object.assign(acc, req.data);
+  } else if(req.type === 'DELETE') {
+    db.accounts = db.accounts.filter(a => a.accountNumber !== req.accNo);
+  }
+  db.editRequests.splice(idx, 1);
+  save(); alert('REQUEST APPROVED & APPLIED.'); renderAdmin(); syncUI();
+}
+
+function rejectEditReq(idx) {
+  db.editRequests.splice(idx, 1);
+  save(); alert('REQUEST REJECTED.'); renderAdmin();
+}
+
+/* --- UNIVERSAL SEARCH WITH EXPANDED DETAILS & TRANSACTION HISTORY ICON --- */
 function openSearchModal(){ document.getElementById('search-modal').style.display='flex'; runSearch(); }
 function closeSearchModal(){ document.getElementById('search-modal').style.display='none'; }
 function runSearch() {
   const c=document.getElementById('search-criteria').value, q=document.getElementById('search-query').value.trim().toUpperCase(), tb=document.getElementById('search-results-body'); tb.innerHTML='';
   let m=db.accounts.filter(a=>{ if(!q)return true; if(c==='accNo')return a.accountNumber.includes(q); if(c==='mobile')return a.phone.includes(q); if(c==='name')return a.holderName.includes(q); return false; });
-  if(!m.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;">NO MATCH</td></tr>'; return; }
-  m.forEach(a=>{ tb.innerHTML+=`<tr><td class="bold">${a.accountNumber}</td><td>${a.holderName}</td><td>${a.phone}</td><td>${a.balance.toFixed(2)}</td><td><button onclick="useSearch('${a.accountNumber}')">USE</button></td></tr>`; });
+  if(!m.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;">NO MATCH FOUND</td></tr>'; return; }
+  
+  m.forEach(a=>{
+    tb.innerHTML+=`
+      <tr>
+        <td class="bold">${a.accountNumber}</td>
+        <td>
+          <strong>NAME:</strong> ${a.holderName}<br>
+          <span class="dim">FATHER:</span> ${a.fatherName}<br>
+          <span class="dim">ADDR:</span> ${a.address}
+        </td>
+        <td>PH: ${a.phone}<br>SMS: ${a.smsOptIn?'ON':'OFF'}</td>
+        <td class="bold">${a.balance.toFixed(2)}</td>
+        <td>
+          <button onclick="useSearch('${a.accountNumber}')">USE</button>
+          <button onclick="viewAccountHistory('${a.accountNumber}')" title="Transaction History">📜</button>
+        </td>
+      </tr>`;
+  });
 }
+
 function useSearch(acc){ closeSearchModal(); showPage('page-teller'); document.getElementById('tx-acc').value=acc; autoFetch(); }
+
+function viewAccountHistory(accNo) {
+  closeSearchModal();
+  showPage('page-audit');
+  // Highlight or filter journal view for specific account number
+  const tb = document.getElementById('body-journal');
+  tb.innerHTML = '';
+  const filtered = db.ledger.filter(l => l.accNo === accNo);
+  if(!filtered.length) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;">NO TRANSACTIONS FOUND FOR A/C ${accNo}</td></tr>`;
+    return;
+  }
+  filtered.forEach(l => {
+    tb.innerHTML += `<tr><td>${l.seq}</td><td>${l.timestamp}</td><td class="bold">${l.accNo}</td><td>${l.type}</td><td>${l.amount.toFixed(2)} (${l.narrative})</td><td class="dim">${l.operator}</td></tr>`;
+  });
+}
 
 function syncUI() {
   let cr=0, dr=0; db.ledger.forEach(l=>{ if(l.type==='CR')cr+=l.amount; else if(l.type==='DR')dr+=l.amount; });
   document.getElementById('val-dep').innerText=cr.toFixed(2); document.getElementById('val-with').innerText=dr.toFixed(2); document.getElementById('val-accs').innerText=db.accounts.length;
   
   const ab=document.getElementById('body-accs'); ab.innerHTML='';
-  const isAdm = session && session.role === 'ADMIN';
   db.accounts.forEach(a => {
-    const actBtn = isAdm ? `<button onclick="deleteAccount('${a.accountNumber}')" style="border-color:#ff4444; color:#ff4444;">DEL</button>` : `<span class="dim">LOCKED</span>`;
-    ab.innerHTML+=`<tr><td class="bold">${a.accountNumber}</td><td>${a.holderName}</td><td class="dim">PH: ${a.phone}</td><td class="bold">${a.balance.toFixed(2)}</td><td>${actBtn}</td></tr>`;
+    const statusBadge = a.status === 'PENDING' ? '<span class="blink" style="color:yellow;">[PENDING]</span>' : '';
+    ab.innerHTML+=`
+      <tr>
+        <td class="bold">${a.accountNumber} ${statusBadge}</td>
+        <td><strong>${a.holderName}</strong><br><span class="dim">FATHER: ${a.fatherName}</span></td>
+        <td class="dim">PH: ${a.phone}<br>SMS: ${a.smsOptIn?'ON':'OFF'}</td>
+        <td class="bold">${a.balance.toFixed(2)}</td>
+        <td>
+          <button onclick="openEditAcc('${a.accountNumber}')">EDIT</button>
+          <button onclick="requestDeleteAccount('${a.accountNumber}')" style="border-color:#ff4444; color:#ff4444;">DEL</button>
+        </td>
+      </tr>`;
   });
+
+  const jb = document.getElementById('body-journal');
+  if(jb && !jb.hasChildNodes() || jb.innerHTML === '') {
+    jb.innerHTML = '';
+    db.ledger.slice(0, 50).forEach(l => {
+      jb.innerHTML += `<tr><td>${l.seq}</td><td>${l.timestamp}</td><td class="bold">${l.accNo || 'SYS'}</td><td>${l.type}</td><td>${l.amount ? l.amount.toFixed(2) : '0.00'} (${l.narrative})</td><td class="dim">${l.operator}</td></tr>`;
+    });
+  }
 }
 
 async function syncPendingDataToServer() {
