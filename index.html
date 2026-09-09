@@ -81,6 +81,7 @@
     <div>SYS: [B&W-CORE-V19-DB]</div>
     <div>NET: <span id="net-status-tag" class="blink">CHECKING...</span></div>
     <div>USER: <span id="session-tag">DISCONNECTED</span></div>
+    <div id="cloud-sync-status" class="dim">SYNC: IDLE</div>
   </div>
 
   <div class="view-page" id="page-login" style="display: flex;">
@@ -459,22 +460,35 @@ function syncUI() {
   db.ledger.forEach(l=>{ jb.innerHTML+=`<tr><td>${l.seq}</td><td>${l.timestamp}</td><td>${l.accNo}</td><td>${l.type}</td><td>${l.type==='MOD_AUDIT'?l.narrative:l.amount.toFixed(2)}</td><td>${l.operator}</td></tr>`; });
 }
 
-/* --- CLOUD DATABASE BRIDGE --- */
+/* --- CLOUD DATABASE BRIDGE WITH SECONDS TRACKING --- */
 async function syncPendingDataToServer() {
   const localData = localStorage.getItem(DB_KEY);
   if (!localData) return;
+  
+  const syncTag = document.getElementById('cloud-sync-status');
+  if(syncTag) syncTag.innerText = 'SYNCING...';
+
   try {
     const response = await fetch('/.netlify/functions/sync', {
       method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-api-key': 'CRIS_SECURE_998877' 
+      },
       body: localData
     });
+
     if(response.ok) {
-      console.log('CLOUD SYNC COMPLETE: Ledger safely backed up to CockroachDB.');
+      const now = new Date();
+      const exactTime = now.toLocaleTimeString() + '.' + String(now.getMilliseconds()).padStart(3, '0');
+      console.log(`[SYNC SUCCESS] CockroachDB updated at ${exactTime}`);
+      if(syncTag) syncTag.innerText = `SYNCED: [${exactTime}]`;
     } else {
-      console.warn('Backend rejected sync. Check Netlify function logs.');
+      if(syncTag) syncTag.innerText = 'SYNC REJECTED';
     }
   } catch (e) {
-    console.warn('CLOUD SYNC DEFERRED: Waiting for connection or backend setup.');
+    console.warn('CLOUD SYNC DEFERRED: Offline mode active.');
+    if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
   }
 }
 
@@ -483,10 +497,12 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navi
 function updateNet() {
   const tag = document.getElementById('net-status-tag');
   if(navigator.onLine){ 
-    tag.innerText='ONLINE (SYNC READY)'; tag.style.color='#ffffff'; 
+    tag.innerText='ONLINE'; tag.style.color='#ffffff'; 
     syncPendingDataToServer(); 
   } else { 
-    tag.innerText='OFFLINE (LOCAL VAULT)'; tag.style.color='#888888'; 
+    tag.innerText='OFFLINE'; tag.style.color='#888888'; 
+    const syncTag = document.getElementById('cloud-sync-status');
+    if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
   }
 }
 window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet); document.addEventListener('DOMContentLoaded', updateNet);
