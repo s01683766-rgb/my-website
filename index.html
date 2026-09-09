@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Database Project</title>
+</head>
+<body>
+  <h2>Enter Your Details</h2>
+  
+  <form id="userForm">
+    <input type="text" id="name" placeholder="Your Name" required /><br><br>
+    <input type="email" id="email" placeholder="Your Email" required /><br><br>
+    <button type="submit">Save to CockroachDB</button>
+  </form>
+
+  <p id="statusMessage"></p>
+
+  <script>
+    document.getElementById('userForm').addEventListener('submit', async (e) => {
+      e.preventDefault(); // Prevents the page from reloading
+      
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const statusText = document.getElementById('statusMessage');
+
+      statusText.textContent = "Saving...";
+
+      try {
+        // This calls the save-data.js function you created
+        const response = await fetch('/.netlify/functions/save-data', {
+          method: 'POST',
+          body: JSON.stringify({ name, email })
+        });
+        
+        const result = await response.json();
+        
+        if(response.ok) {
+          statusText.textContent = "Success! " + result.message;
+          document.getElementById('userForm').reset(); // Clears the form
+        } else {
+          statusText.textContent = "Error: " + result.error;
+        }
+      } catch (error) {
+        statusText.textContent = "Failed to connect to the database.";
+      }
+    });
+  </script>
+</body>
+</html>
