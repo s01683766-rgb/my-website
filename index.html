@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
   <title>CRIS-PRS // B&W MASTER TERMINAL</title>
+
   <style>
     :root { --bg: #000000; --fg: #ffffff; --dim: #888888; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -118,6 +119,17 @@
   </div>
 
   <div class="view-page" id="page-acc">
+    <!-- HYBRID CONTACT IMPORT ENGINE RESTORED -->
+    <div class="box" style="border: 2px dashed var(--fg);">
+      <div class="box-title">HYBRID CONTACT IMPORT ENGINE</div>
+      <p class="dim" style="font-size:0.7rem; margin-bottom:10px;">1. SELECT SPECIFIC CONTACTS DIRECTLY FROM PHONE.<br>2. BULK IMPORT ENTIRE ADDRESS BOOK VIA .VCF FILE.</p>
+      <div class="grid-2">
+        <button class="inverted" onclick="importMultipleContacts()">[ CHOOSE CONTACTS ]</button>
+        <button class="inverted" onclick="document.getElementById('vcf-upload').click()">[ IMPORT .VCF ]</button>
+      </div>
+      <input type="file" id="vcf-upload" accept=".vcf" style="display:none;" onchange="processVCF(event)" />
+    </div>
+
     <div class="box">
       <div class="box-title">MANUAL ACCOUNT REGISTRATION</div>
       <form onsubmit="manualAccount(event)" class="grid-3">
@@ -220,7 +232,6 @@ function init(isSilent = false) {
   const local = localStorage.getItem(DB_KEY); 
   if (local) { try { db = JSON.parse(local); if(!db.editRequests) db.editRequests = []; } catch(e) {} }
   
-  // Restore session automatically on page refresh
   const savedSession = localStorage.getItem(DB_KEY + '_SESSION');
   if (savedSession && !session) {
     try {
@@ -301,11 +312,96 @@ function getSerial() {
   return (max+1).toString();
 }
 
+/* --- INDIVIDUAL & VCF CONTACT PULLING METHODS --- */
+async function importMultipleContacts() {
+  if (!('contacts' in navigator && 'ContactsManager' in window)) { 
+    alert('DEVICE CONTACT API NOT SUPPORTED ON THIS BROWSER. USE .VCF IMPORT INSTEAD.'); 
+    return; 
+  }
+  try {
+    const contacts = await navigator.contacts.select(['name','tel','email','address'], { multiple:true });
+    if(!contacts || !contacts.length) return; 
+    let added = 0;
+    contacts.forEach(c => {
+      const name = (c.name && c.name.length) ? c.name[0].toUpperCase() : 'UNKNOWN'; 
+      const phone = (c.tel && c.tel.length) ? c.tel[0].replace(/[^0-9]/g,'') : 'NO_PHONE';
+      const email = (c.email && c.email.length) ? c.email[0].toUpperCase() : 'NO_EMAIL'; 
+      let addStr = 'NO_ADDRESS';
+      if(c.address && c.address.length){ 
+        const a = c.address[0]; 
+        addStr = [a.street, a.city, a.region, a.postalCode, a.country].filter(Boolean).join(', ').toUpperCase(); 
+      }
+      if(!db.accounts.some(acc => acc.phone === phone)) {
+        db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'IMPORTED', phone: phone, email: email, address: addStr, balance: 0, smsOptIn: false }); 
+        added++;
+      }
+    });
+    save(); 
+    alert(`SUCCESS: IMPORTED ${added} RECORDS DIRECTLY FROM DEVICE CONTACTS.`);
+  } catch(err) {
+    console.error(err);
+  }
+}
+
+function processVCF(e) {
+  const fileInput = e.target; 
+  if (!fileInput.files.length) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const text = ev.target.result; 
+    const cards = text.split('BEGIN:VCARD'); 
+    let added = 0;
+    cards.forEach(card => {
+      if (!card.trim()) return;
+      const nameMatch = card.match(/FN:(.*)/i); 
+      const phoneMatch = card.match(/TEL.*:(.*)/i);
+      if (nameMatch && phoneMatch) {
+        const name = nameMatch[1].trim().toUpperCase(); 
+        const phone = phoneMatch[1].replace(/[^0-9]/g, '');
+        if (phone.length >= 7 && !db.accounts.some(a => a.phone === phone)) {
+          db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'VCF_IMPORT', phone: phone, email: 'N/A', address: 'N/A', balance: 0, smsOptIn: false }); 
+          added++;
+        }
+      }
+    });
+    save(); 
+    alert(`VCF EXTRACTION COMPLETE.\n${added} NEW ACCOUNTS IMPORTED.`); 
+    fileInput.value = '';
+  };
+  reader.readAsText(fileInput.files[0]);
+}
+
 function manualAccount(e) {
-  e.preventDefault(); const accNo=getSerial();
-  db.accounts.push({ accountNumber: accNo, holderName: document.getElementById('acc-name').value.trim().toUpperCase(), fatherName: document.getElementById('acc-father').value.trim().toUpperCase()||'N/A', phone: document.getElementById('acc-phone').value.trim().replace(/[^0-9]/g,''), email: document.getElementById('acc-email').value.trim().toUpperCase()||'N/A', address: document.getElementById('acc-address').value.trim().toUpperCase()||'N/A', balance:0, smsOptIn:(document.getElementById('acc-sms').value==='ON') });
+  e.preventDefault(); 
+  const accNo = getSerial();
+  db.accounts.push({ 
+    accountNumber: accNo, 
+    holderName: document.getElementById('acc-name').value.trim().toUpperCase(), 
+    fatherName: document.getElementById('acc-father').value.trim().toUpperCase()||'N/A', 
+    phone: document.getElementById('acc-phone').value.trim().replace(/[^0-9]/g,''), 
+    email: document.getElementById('acc-email').value.trim().toUpperCase()||'N/A', 
+    address: document.getElementById('acc-address').value.trim().toUpperCase()||'N/A', 
+    balance: 0, 
+    smsOptIn: (document.getElementById('acc-sms').value==='ON') 
+  });
   db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_OPEN', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: 'NEW ACCOUNT OPENED' });
-  save(); alert(`A/C CREATED: ${accNo}`); e.target.reset();
+  save(); 
+  alert(`A/C CREATED: ${accNo}`); 
+  e.target.reset();
+}
+
+/* --- ACCOUNT DELETE FEATURE --- */
+function deleteAccount(accNo) {
+  if (!session || session.role !== 'ADMIN') {
+    alert('PERMISSION DENIED: ONLY ADMIN CAN DELETE ACCOUNTS.');
+    return;
+  }
+  if (confirm(`WARNING: ARE YOU SURE YOU WANT TO DELETE ACCOUNT ${accNo}?`)) {
+    db.accounts = db.accounts.filter(a => a.accountNumber !== accNo);
+    db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_DEL', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: 'ACCOUNT DELETED BY ADMIN' });
+    save();
+    alert(`ACCOUNT ${accNo} DELETED SUCCESSFULLY.`);
+  }
 }
 
 function autoFetch() {
@@ -344,12 +440,13 @@ function syncUI() {
   document.getElementById('val-dep').innerText=cr.toFixed(2); document.getElementById('val-with').innerText=dr.toFixed(2); document.getElementById('val-accs').innerText=db.accounts.length;
   
   const ab=document.getElementById('body-accs'); ab.innerHTML='';
+  const isAdm = session && session.role === 'ADMIN';
   db.accounts.forEach(a => {
-    ab.innerHTML+=`<tr><td class="bold">${a.accountNumber}</td><td>${a.holderName}</td><td class="dim">PH: ${a.phone}</td><td class="bold">${a.balance.toFixed(2)}</td><td>-</td></tr>`;
+    const actBtn = isAdm ? `<button onclick="deleteAccount('${a.accountNumber}')" style="border-color:#ff4444; color:#ff4444;">DEL</button>` : `<span class="dim">LOCKED</span>`;
+    ab.innerHTML+=`<tr><td class="bold">${a.accountNumber}</td><td>${a.holderName}</td><td class="dim">PH: ${a.phone}</td><td class="bold">${a.balance.toFixed(2)}</td><td>${actBtn}</td></tr>`;
   });
 }
 
-/* --- CLOUD SYNC TO SAVE-DATA FUNCTION --- */
 async function syncPendingDataToServer() {
   const localData = localStorage.getItem(DB_KEY);
   if (!localData) return;
