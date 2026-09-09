@@ -249,7 +249,6 @@ if(syncChannel) { syncChannel.onmessage = (e) => { if(e.data === 'RELOAD_DB') in
 let session = null;
 let currentClientIP = 'UNKNOWN_IP';
 
-// Fetch client network/operator IP dynamically
 async function fetchClientIP() {
   try {
     const res = await fetch('https://api.ipify.org?format=json');
@@ -311,7 +310,6 @@ function handleLogon(e) {
   if(u.status==='PENDING'){ alert('AWAITING ADMIN APPROVAL'); return; }
   if(u.status==='SUSPENDED'){ alert('ACCOUNT SUSPENDED'); return; }
 
-  // Record IP-based session logging
   u.lastIp = currentClientIP;
   session=u; 
   save();
