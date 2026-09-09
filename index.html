@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
   <title>CRIS-PRS // B&W MASTER TERMINAL</title>
-
-  <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22CRIS%20PRS%20Terminal%22%2C%22short_name%22%3A%22CRIS%20Terminal%22%2C%22description%22%3A%22CRIS%20PRS%20Secure%20Ledger%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23000000%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzAwMDAwMCIvPjxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMjAwIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNDAiIGZpbGw9Im5vbmUiLz48L3N2Zz4%3D%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D" />
-
   <style>
     :root { --bg: #000000; --fg: #ffffff; --dim: #888888; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -118,30 +115,9 @@
       <div class="box"><div class="box-title">WITHDRAWALS (DR)</div><div class="stat-val" id="val-with">0.00</div></div>
       <div class="box"><div class="box-title">ACTIVE A/C</div><div class="stat-val" id="val-accs">0</div></div>
     </div>
-    
-    <div class="box" style="border: 1px dashed var(--fg);">
-      <div class="box-title">BLUETOOTH / LOCAL MESH SYNC</div>
-      <p class="dim" style="font-size:0.7rem; margin-bottom:8px;">GENERATE A SECURE PAYLOAD TO TRANSFER LEDGER TO ANOTHER OFFLINE DEVICE VIA BLUETOOTH OR NEARBY SHARE.</p>
-      <div class="grid-2">
-        <button onclick="exportMeshPayload()">[ EXPORT SYNC PAYLOAD ]</button>
-        <button onclick="importMeshPayload()">[ IMPORT SYNC PAYLOAD ]</button>
-      </div>
-      <textarea id="mesh-payload-io" rows="3" style="display:none; margin-top:8px; font-size:0.65rem;" placeholder="PASTE PAYLOAD HERE TO IMPORT..."></textarea>
-      <button id="mesh-commit-btn" style="display:none; margin-top:8px;" class="inverted" onclick="commitMeshPayload()">[ COMMIT OVERRIDE ]</button>
-    </div>
   </div>
 
   <div class="view-page" id="page-acc">
-    <div class="box" style="border: 2px dashed var(--fg);">
-      <div class="box-title">HYBRID CONTACT IMPORT ENGINE</div>
-      <p class="dim" style="font-size:0.7rem; margin-bottom:10px;">1. SELECT SPECIFIC CONTACTS DIRECTLY FROM PHONE.<br>2. BULK IMPORT ENTIRE ADDRESS BOOK VIA .VCF FILE.</p>
-      <div class="grid-2">
-        <button class="inverted" onclick="importMultipleContacts()">[ CHOOSE CONTACTS ]</button>
-        <button class="inverted" onclick="document.getElementById('vcf-upload').click()">[ IMPORT .VCF ]</button>
-      </div>
-      <input type="file" id="vcf-upload" accept=".vcf" style="display:none;" onchange="processVCF(event)" />
-    </div>
-
     <div class="box">
       <div class="box-title">MANUAL ACCOUNT REGISTRATION</div>
       <form onsubmit="manualAccount(event)" class="grid-3">
@@ -155,7 +131,6 @@
       </form>
     </div>
 
-    <!-- ADMIN DIRECT EDIT DESK -->
     <div class="box" id="box-edit-acc" style="display:none; border: 2px solid var(--fg);">
       <div class="box-title"><span>ADMIN MODIFICATION DESK</span><span onclick="closeEditAcc()" style="cursor:pointer; text-decoration:underline;">[CANCEL]</span></div>
       <form onsubmit="saveAccEdit(event)" style="display:flex; flex-direction:column; gap:8px;">
@@ -164,18 +139,6 @@
         <div class="grid-2"><input type="tel" id="edit-phone" required /><input type="text" id="edit-email" /></div>
         <div class="grid-2"><textarea id="edit-address" rows="2"></textarea><select id="edit-sms"><option value="ON">SMS: ON</option><option value="OFF">SMS: OFF</option></select></div>
         <button type="submit" class="inverted">[ COMMIT EDIT ]</button>
-      </form>
-    </div>
-
-    <!-- OPERATOR EDIT REQUEST DESK -->
-    <div class="box" id="box-req-edit" style="display:none; border-style:dashed;">
-      <div class="box-title"><span>SUBMIT EDIT REQUEST TO ADMIN</span><span onclick="closeReqEdit()" style="cursor:pointer; text-decoration:underline;">[CANCEL]</span></div>
-      <form onsubmit="submitEditReq(event)" style="display:flex; flex-direction:column; gap:8px;">
-        <div class="grid-2"><input type="text" id="req-accno" readonly /><input type="text" id="req-bal" readonly /></div>
-        <div class="grid-2"><input type="text" id="req-name" placeholder="NEW NAME" required /><input type="text" id="req-father" placeholder="NEW FATHER NAME" required /></div>
-        <div class="grid-2"><input type="tel" id="req-phone" placeholder="NEW PHONE" required /><input type="text" id="req-email" placeholder="NEW EMAIL" /></div>
-        <div class="grid-2"><textarea id="req-address" placeholder="NEW ADDRESS" rows="2"></textarea><select id="req-sms"><option value="ON">SMS: ON</option><option value="OFF">SMS: OFF</option></select></div>
-        <button type="submit">[ SEND REQUEST TO ADMIN ]</button>
       </form>
     </div>
 
@@ -210,22 +173,10 @@
 
   <div class="view-page" id="page-admin">
     <div class="box">
-      <div class="box-title">ADMINISTRATIVE MASTER CONTROLS & OPERATOR IP TRACKING</div>
-      <div style="border-bottom: 1px dashed var(--fg); padding-bottom: 10px; margin-bottom: 10px;">
-        <div class="bold" style="margin-bottom:6px;">> PENDING A/C EDIT REQUESTS</div>
-        <div class="table-container" style="max-height: 150px;">
-          <table><thead><tr><th>ACC NO</th><th>REQUESTED BY</th><th>PROPOSED CHANGES</th><th>ACTION</th></tr></thead><tbody id="body-edit-reqs"></tbody></table>
-        </div>
-      </div>
-      <div style="border-bottom: 1px dashed var(--fg); padding-bottom: 10px; margin-bottom: 10px;">
-        <div class="bold" style="margin-bottom:6px;">> PENDING USER REGISTRATIONS</div>
-        <div class="table-container" style="max-height: 150px;">
-          <table><thead><tr><th>USER ID</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody id="body-pending"></tbody></table>
-        </div>
-      </div>
-      <div class="bold" style="margin-bottom:6px;">> ACTIVE PERSONNEL & LAST IP SESSIONS</div>
+      <div class="box-title">ADMINISTRATIVE MASTER CONTROLS</div>
+      <div class="bold" style="margin-bottom:6px;">> ACTIVE PERSONNEL & SESSIONS</div>
       <div class="table-container">
-        <table><thead><tr><th>USER ID</th><th>ROLE</th><th>STATUS</th><th>LAST IP ADDRESS</th><th>OPERATIONS</th></tr></thead><tbody id="body-users"></tbody></table>
+        <table><thead><tr><th>USER ID</th><th>ROLE</th><th>STATUS</th><th>LAST IP</th><th>ACTIONS</th></tr></thead><tbody id="body-users"></tbody></table>
       </div>
     </div>
   </div>
@@ -268,12 +219,34 @@ let db = { users: [{ id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', 
 function init(isSilent = false) { 
   const local = localStorage.getItem(DB_KEY); 
   if (local) { try { db = JSON.parse(local); if(!db.editRequests) db.editRequests = []; } catch(e) {} }
+  
+  // Restore session automatically on page refresh
+  const savedSession = localStorage.getItem(DB_KEY + '_SESSION');
+  if (savedSession && !session) {
+    try {
+      session = JSON.parse(savedSession);
+      const u = db.users.find(x => x.id === session.id);
+      if (u && u.status === 'ACTIVE') {
+        setTimeout(() => {
+          document.getElementById('session-tag').innerText = `${u.id} [${u.role}]`;
+          document.getElementById('app-nav').style.display = 'grid';
+          document.getElementById('btn-admin').style.display = (u.role === 'ADMIN') ? 'block' : 'none';
+          showPage('page-dash');
+          syncUI();
+        }, 50);
+      } else {
+        session = null;
+        localStorage.removeItem(DB_KEY + '_SESSION');
+      }
+    } catch(e) { session = null; }
+  }
+
   if(!isSilent && session) syncUI(); 
-  if(isSilent && session) syncUI(); 
 }
 
 function save() { 
   localStorage.setItem(DB_KEY, JSON.stringify(db)); 
+  if(session) localStorage.setItem(DB_KEY + '_SESSION', JSON.stringify(session));
   if(syncChannel) syncChannel.postMessage('RELOAD_DB');
   if (session) syncUI(); 
   if (navigator.onLine) syncPendingDataToServer();
@@ -291,12 +264,6 @@ function showPage(id) {
   const map={'page-dash':0,'page-acc':1,'page-teller':2,'page-admin':3,'page-audit':4};
   if(map[id]!==undefined) document.querySelectorAll('.nav-btn')[map[id]].classList.add('active');
   if(id==='page-admin') renderAdmin();
-}
-
-function handleReg(e) {
-  e.preventDefault(); const uid=document.getElementById('reg-uid').value.trim().toUpperCase(), pin=document.getElementById('reg-pin').value.trim();
-  if (db.users.some(u=>u.id===uid)) { alert('USER EXISTS'); return; }
-  db.users.push({ id:uid, pin:pin, role:'OPERATOR', status:'PENDING', lastIp: currentClientIP }); save(); alert('SUBMITTED TO ADMIN.'); toggleAuth();
 }
 
 function handleLogon(e) {
@@ -319,8 +286,10 @@ function handleLogon(e) {
   document.getElementById('btn-admin').style.display=(u.role==='ADMIN')?'block':'none';
   showPage('page-dash'); syncUI();
 }
+
 function logout() { 
   session=null; 
+  localStorage.removeItem(DB_KEY + '_SESSION');
   document.getElementById('app-nav').style.display='none'; 
   document.getElementById('session-tag').innerText='DISCONNECTED'; 
   showPage('page-login'); 
@@ -332,64 +301,6 @@ function getSerial() {
   return (max+1).toString();
 }
 
-function exportMeshPayload() {
-  const payload = btoa(JSON.stringify(db));
-  const io = document.getElementById('mesh-payload-io');
-  io.style.display = 'block'; io.value = payload; document.getElementById('mesh-commit-btn').style.display = 'none';
-  io.select(); document.execCommand('copy');
-  alert('PAYLOAD GENERATED AND COPIED TO CLIPBOARD.\n\nSEND THIS TEXT VIA BLUETOOTH, NEARBY SHARE, OR OFFLINE MESSENGER TO ANOTHER DEVICE.');
-}
-function importMeshPayload() {
-  const io = document.getElementById('mesh-payload-io');
-  io.style.display = 'block'; io.value = ''; document.getElementById('mesh-commit-btn').style.display = 'block';
-  alert('PASTE THE RECEIVED PAYLOAD INTO THE TEXT BOX, THEN CLICK COMMIT.');
-}
-function commitMeshPayload() {
-  try {
-    const raw = document.getElementById('mesh-payload-io').value.trim(); const parsed = JSON.parse(atob(raw));
-    if(parsed && parsed.accounts && parsed.ledger) {
-      if(confirm('WARNING: THIS WILL OVERWRITE CURRENT LOCAL LEDGER WITH IMPORTED MESH DATA. PROCEED?')) {
-        db = parsed; save(); document.getElementById('mesh-payload-io').style.display = 'none'; document.getElementById('mesh-commit-btn').style.display = 'none'; alert('MESH DATA IMPORTED SUCCESSFULLY.');
-      }
-    } else { throw 'INVALID STRUCT'; }
-  } catch (err) { alert('ERROR: INVALID OR CORRUPTED SYNC PAYLOAD.'); }
-}
-
-async function importMultipleContacts() {
-  if (!('contacts' in navigator && 'ContactsManager' in window)) { alert('DEVICE CONTACT API NOT SUPPORTED. USE VCF IMPORT INSTEAD.'); return; }
-  try {
-    const contacts = await navigator.contacts.select(['name','tel','email','address'], { multiple:true });
-    if(!contacts.length) return; let added=0;
-    contacts.forEach(c => {
-      const name=(c.name&&c.name.length)?c.name[0].toUpperCase():'UNKNOWN'; const phone=(c.tel&&c.tel.length)?c.tel[0].replace(/[^0-9]/g,''):'NO_PHONE';
-      const email=(c.email&&c.email.length)?c.email[0].toUpperCase():'NO_EMAIL'; let addStr='NO_ADDRESS';
-      if(c.address&&c.address.length){ const a=c.address[0]; addStr=[a.street,a.city,a.region,a.postalCode,a.country].filter(Boolean).join(', ').toUpperCase(); }
-      db.accounts.push({ accountNumber:getSerial(), holderName:name, fatherName:'IMPORTED', phone:phone, email:email, address:addStr, balance:0, smsOptIn:false }); added++;
-    });
-    save(); alert(`IMPORTED ${added} RECORDS DIRECTLY FROM PHONE.`);
-  } catch(err){}
-}
-
-function processVCF(e) {
-  const fileInput = e.target; if (!fileInput.files.length) return;
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    const text = ev.target.result; const cards = text.split('BEGIN:VCARD'); let added = 0;
-    cards.forEach(card => {
-      if (!card.trim()) return;
-      const nameMatch = card.match(/FN:(.*)/i); const phoneMatch = card.match(/TEL.*:(.*)/i);
-      if (nameMatch && phoneMatch) {
-        const name = nameMatch[1].trim().toUpperCase(); const phone = phoneMatch[1].replace(/[^0-9]/g, '');
-        if (phone.length >= 7 && !db.accounts.some(a => a.phone === phone)) {
-          db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'VCF_IMPORT', phone: phone, email: 'N/A', address: 'N/A', balance: 0, smsOptIn: false }); added++;
-        }
-      }
-    });
-    save(); alert(`VCF EXTRACTION COMPLETE.\n${added} NEW ACCOUNTS IMPORTED.`); fileInput.value = '';
-  };
-  reader.readAsText(fileInput.files[0]);
-}
-
 function manualAccount(e) {
   e.preventDefault(); const accNo=getSerial();
   db.accounts.push({ accountNumber: accNo, holderName: document.getElementById('acc-name').value.trim().toUpperCase(), fatherName: document.getElementById('acc-father').value.trim().toUpperCase()||'N/A', phone: document.getElementById('acc-phone').value.trim().replace(/[^0-9]/g,''), email: document.getElementById('acc-email').value.trim().toUpperCase()||'N/A', address: document.getElementById('acc-address').value.trim().toUpperCase()||'N/A', balance:0, smsOptIn:(document.getElementById('acc-sms').value==='ON') });
@@ -397,75 +308,26 @@ function manualAccount(e) {
   save(); alert(`A/C CREATED: ${accNo}`); e.target.reset();
 }
 
-function openEditAcc(accNo) {
-  const a=db.accounts.find(x=>x.accountNumber===accNo); if(!a)return;
-  document.getElementById('box-edit-acc').style.display='block';
-  document.getElementById('edit-accno').value=a.accountNumber; document.getElementById('edit-bal').value='BAL: '+a.balance.toFixed(2);
-  document.getElementById('edit-name').value=a.holderName; document.getElementById('edit-father').value=a.fatherName||'';
-  document.getElementById('edit-phone').value=a.phone; document.getElementById('edit-email').value=a.email||'';
-  document.getElementById('edit-address').value=a.address||''; document.getElementById('edit-sms').value=a.smsOptIn?'ON':'OFF';
-  document.getElementById('box-edit-acc').scrollIntoView();
-}
-function closeEditAcc() { document.getElementById('box-edit-acc').style.display='none'; }
-function saveAccEdit(e) {
-  e.preventDefault(); const accNo=document.getElementById('edit-accno').value; const a=db.accounts.find(x=>x.accountNumber===accNo); if(!a)return;
-  a.holderName=document.getElementById('edit-name').value.trim().toUpperCase(); a.fatherName=document.getElementById('edit-father').value.trim().toUpperCase();
-  a.phone=document.getElementById('edit-phone').value.trim().replace(/[^0-9]/g,''); a.email=document.getElementById('edit-email').value.trim().toUpperCase();
-  a.address=document.getElementById('edit-address').value.trim().toUpperCase(); a.smsOptIn=(document.getElementById('edit-sms').value==='ON');
-  db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'MOD_AUDIT', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: 'ADMIN DIRECT EDIT' });
-  save(); alert(`ACCOUNT MODIFIED.`); closeEditAcc();
-}
-
-function openReqEdit(accNo) {
-  const a=db.accounts.find(x=>x.accountNumber===accNo); if(!a)return;
-  document.getElementById('box-req-edit').style.display='block';
-  document.getElementById('req-accno').value=a.accountNumber; document.getElementById('req-bal').value='BAL: '+a.balance.toFixed(2);
-  document.getElementById('req-name').value=a.holderName; document.getElementById('req-father').value=a.fatherName||'';
-  document.getElementById('req-phone').value=a.phone; document.getElementById('req-email').value=a.email||'';
-  document.getElementById('req-address').value=a.address||''; document.getElementById('req-sms').value=a.smsOptIn?'ON':'OFF';
-  document.getElementById('box-req-edit').scrollIntoView();
-}
-function closeReqEdit() { document.getElementById('box-req-edit').style.display='none'; }
-function submitEditReq(e) {
-  e.preventDefault();
-  db.editRequests.push({ reqId: Date.now().toString(), accNo: document.getElementById('req-accno').value, requestedBy: `${session.id} [IP:${currentClientIP}]`, status: 'PENDING', newName: document.getElementById('req-name').value.trim().toUpperCase(), newFather: document.getElementById('req-father').value.trim().toUpperCase(), newPhone: document.getElementById('req-phone').value.trim().replace(/[^0-9]/g,''), newEmail: document.getElementById('req-email').value.trim().toUpperCase(), newAddress: document.getElementById('req-address').value.trim().toUpperCase(), newSms: (document.getElementById('req-sms').value==='ON') });
-  save(); alert('REQUEST SENT TO ADMIN.'); closeReqEdit();
-}
-
 function autoFetch() {
   const q=document.getElementById('tx-acc').value; const a=db.accounts.find(x=>x.accountNumber===q);
   document.getElementById('tx-fetch').value=a?`${a.holderName} | BAL: ${a.balance.toFixed(2)} | SMS: ${a.smsOptIn?'ON':'OFF'}`:'NOT FOUND';
 }
+
 function processTx(e) {
   e.preventDefault(); const accNo=document.getElementById('tx-acc').value; const amt=parseFloat(document.getElementById('tx-amt').value); const type=document.getElementById('tx-type').value; const ref=document.getElementById('tx-ref').value.toUpperCase();
   const acc=db.accounts.find(a=>a.accountNumber===accNo); if(!acc){ alert('INVALID A/C'); return; }
   if(type==='DR' && acc.balance<amt){ alert('INSUFFICIENT BAL'); return; }
   if(type==='CR') acc.balance+=amt; if(type==='DR') acc.balance-=amt;
   db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type, amount: amt, operator: `${session.id} (${currentClientIP})`, narrative: ref }); save(); autoFetch();
-  if(acc.smsOptIn) { window.location.href=`sms:${acc.phone}?body=${encodeURIComponent(`[PRS] A/C ${accNo} ${type==='CR'?'CREDITED':'DEBITED'} INR ${amt.toFixed(2)}. BAL: ${acc.balance.toFixed(2)}.`)}`; } else { alert('SAVED. (SMS OFF)'); }
   document.getElementById('tx-amt').value=''; document.getElementById('tx-ref').value='';
 }
 
 function renderAdmin() {
-  const pBody=document.getElementById('body-pending'), uBody=document.getElementById('body-users'), reqBody=document.getElementById('body-edit-reqs');
-  pBody.innerHTML=''; uBody.innerHTML=''; reqBody.innerHTML='';
-  db.editRequests.forEach((r, i) => { if(r.status==='PENDING') { reqBody.innerHTML += `<tr><td>${r.accNo}</td><td>${r.requestedBy}</td><td class="dim">NAME: ${r.newName}<br>PH: ${r.newPhone}</td><td><button onclick="approveEditReq(${i})">APPV</button> <button onclick="rejectEditReq(${i})">REJ</button></td></tr>`; } });
+  const uBody=document.getElementById('body-users'); uBody.innerHTML='';
   db.users.forEach((u, i) => {
-    if(!u.lastIp) u.lastIp = 'N/A';
-    if(u.status==='PENDING') { pBody.innerHTML+=`<tr><td>${u.id}</td><td class="blink">PENDING</td><td><button onclick="admApprove(${i})">APPV</button> <button onclick="admDel(${i})">DEL</button></td></tr>`; }
-    else { uBody.innerHTML+=`<tr><td class="bold">${u.id}</td><td><select onchange="admRole(${i},this.value)" ${u.id==='ADMIN'?'disabled':''}><option value="OPERATOR" ${u.role==='OPERATOR'?'selected':''}>OP</option><option value="SUPERVISOR" ${u.role==='SUPERVISOR'?'selected':''}>SUP</option><option value="ADMIN" ${u.role==='ADMIN'?'selected':''}>ADM</option></select></td><td><select onchange="admStatus(${i},this.value)" ${u.id==='ADMIN'?'disabled':''}><option value="ACTIVE" ${u.status==='ACTIVE'?'selected':''}>ACTIVE</option><option value="SUSPENDED" ${u.status==='SUSPENDED'?'selected':''}>SUSPENDED</option></select></td><td class="dim" style="font-size:0.7rem;">${u.lastIp}</td><td><button onclick="admResetPin(${i})">PIN</button> <button onclick="admDel(${i})" ${u.id==='ADMIN'?'disabled':''}>DEL</button></td></tr>`; }
+    uBody.innerHTML+=`<tr><td class="bold">${u.id}</td><td>${u.role}</td><td>${u.status}</td><td class="dim">${u.lastIp||'N/A'}</td><td>-</td></tr>`;
   });
 }
-function approveEditReq(i) {
-  const req = db.editRequests[i]; const a = db.accounts.find(x=>x.accountNumber===req.accNo);
-  if(a) { a.holderName=req.newName; a.fatherName=req.newFather; a.phone=req.newPhone; a.email=req.newEmail; a.address=req.newAddress; a.smsOptIn=req.newSms; db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo: a.accountNumber, type: 'MOD_AUDIT', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: `APPROVED EDIT REQ FROM ${req.requestedBy}` }); }
-  db.editRequests.splice(i,1); save(); renderAdmin();
-}
-function rejectEditReq(i) { db.editRequests.splice(i,1); save(); renderAdmin(); }
-function admApprove(i){ db.users[i].status='ACTIVE'; save(); renderAdmin(); }
-function admDel(i){ if(db.users[i].id==='ADMIN')return; if(confirm('DELETE?')){ db.users.splice(i,1); save(); renderAdmin(); } }
-function admRole(i,v){ db.users[i].role=v; save(); } function admStatus(i,v){ db.users[i].status=v; save(); }
-function admResetPin(i){ const p=prompt('NEW PIN:'); if(p){ db.users[i].pin=p.trim(); save(); } }
 
 function openSearchModal(){ document.getElementById('search-modal').style.display='flex'; runSearch(); }
 function closeSearchModal(){ document.getElementById('search-modal').style.display='none'; }
@@ -482,25 +344,26 @@ function syncUI() {
   document.getElementById('val-dep').innerText=cr.toFixed(2); document.getElementById('val-with').innerText=dr.toFixed(2); document.getElementById('val-accs').innerText=db.accounts.length;
   
   const ab=document.getElementById('body-accs'); ab.innerHTML='';
-  const isAdm = session && session.role==='ADMIN';
   db.accounts.forEach(a => {
-    const actBtn = isAdm ? `<button onclick="openEditAcc('${a.accountNumber}')">EDIT</button>` : `<button class="outline" onclick="openReqEdit('${a.accountNumber}')">REQ EDIT</button>`;
-    ab.innerHTML+=`<tr><td class="bold">${a.accountNumber}</td><td>${a.holderName}<br><span class="dim">S/O: ${a.fatherName||'N/A'}</span></td><td class="dim">PH: ${a.phone}<br>EM: ${a.email||'N/A'}<br>ADD: ${a.address||'N/A'}<br>SMS: ${a.smsOptIn?'ON':'OFF'}</td><td class="bold">${a.balance.toFixed(2)}</td><td>${actBtn}</td></tr>`;
+    ab.innerHTML+=`<tr><td class="bold">${a.accountNumber}</td><td>${a.holderName}</td><td class="dim">PH: ${a.phone}</td><td class="bold">${a.balance.toFixed(2)}</td><td>-</td></tr>`;
   });
-  const jb=document.getElementById('body-journal'); jb.innerHTML='';
-  db.ledger.forEach(l=>{ jb.innerHTML+=`<tr><td>${l.seq}</td><td>${l.timestamp}</td><td>${l.accNo}</td><td>${l.type}</td><td>${l.type==='MOD_AUDIT'||l.type==='ACC_OPEN'?l.narrative:l.amount.toFixed(2)}</td><td>${l.operator}</td></tr>`; });
 }
 
-/* --- CLOUD DATABASE BRIDGE WITH SECONDS TRACKING --- */
+/* --- CLOUD SYNC TO SAVE-DATA FUNCTION --- */
 async function syncPendingDataToServer() {
   const localData = localStorage.getItem(DB_KEY);
   if (!localData) return;
   
   const syncTag = document.getElementById('cloud-sync-status');
+  if (!navigator.onLine) {
+    if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
+    return;
+  }
+
   if(syncTag) syncTag.innerText = 'SYNCING...';
 
   try {
-    const response = await fetch('/.netlify/functions/sync', {
+    const response = await fetch('/.netlify/functions/save-data', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -521,8 +384,6 @@ async function syncPendingDataToServer() {
   }
 }
 
-/* --- SERVICE WORKER REGISTRATION & OFFLINE DETECTION --- */
-if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(err => {}); }); }
 function updateNet() {
   const tag = document.getElementById('net-status-tag');
   if(navigator.onLine){ 
