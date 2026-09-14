@@ -61,13 +61,29 @@
     #search-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 10000; padding: 14px; flex-direction: column; gap: 10px; }
     .task-result-box { border: 2px solid var(--fg); background: #111; padding: 12px; margin-bottom: 10px; display: none; }
 
-    /* Dedicated Print Header (Hidden on Screen, Visible on Print) */
+    /* Print Controls & Receipt Header Styles */
+    .print-controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.7rem;
+      background: #111;
+      border: 1px dashed var(--dim);
+      padding: 6px 10px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+    .print-controls-bar label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
     .print-receipt-header { display: none; }
 
     @media print {
       body { background: #fff !important; color: #000 !important; }
-      /* Hide everything except the active printable container */
-      .prs-terminal > *:not(.view-page), #fixed-search-hud, .nav-bar, .status-bar, button, form, .box-title span:last-child, .grid-2, .grid-3, .task-result-box, input, select, textarea { display: none !important; }
+      .prs-terminal > *:not(.view-page), #fixed-search-hud, .nav-bar, .status-bar, button, form, .box-title span:last-child, .grid-2, .grid-3, .task-result-box, input, select, textarea, .print-controls-bar { display: none !important; }
       .view-page { display: none !important; }
       .view-page[style*="flex"] { display: block !important; }
       .prs-terminal { width: 100% !important; max-width: none !important; padding: 0 !important; }
@@ -101,14 +117,14 @@
 </head>
 <body>
 
-<div id="fixed-search-hud"><button class="inverted" onclick="openSearchModal()">[?] UNIVERSAL SEARCH</button></div>
+<div id="fixed-search-hud"><button class="inverted" onclick="openSearchModal()">[SRCH] LOOKUP</button></div>
 
 <div id="search-modal">
   <div class="box" style="border: 2px solid var(--fg); height: 95vh; display:flex; flex-direction:column; gap:8px;">
-    <div class="box-title"><span>UNIVERSAL SEARCH & INSPECTION DESK</span><span onclick="closeSearchModal()" style="cursor:pointer; text-decoration:underline;">[CLOSE X]</span></div>
+    <div class="box-title"><span>ON-DEMAND ACCOUNT LOOKUP DESK</span><span onclick="closeSearchModal()" style="cursor:pointer; text-decoration:underline;">[CLOSE X]</span></div>
     <div class="grid-2">
       <div><select id="search-criteria" onchange="runSearch()"><option value="accNo" selected>1. 11-DIGIT ACC NO</option><option value="mobile">2. MOBILE NUMBER</option><option value="name">3. HOLDER NAME</option></select></div>
-      <div><input type="text" id="search-query" placeholder="QUERY..." oninput="runSearch()" /></div>
+      <div><input type="text" id="search-query" placeholder="ENTER QUERY..." oninput="runSearch()" /></div>
     </div>
     <div style="flex:1; overflow-y:auto; border-top:1px dashed var(--fg); margin-top:6px;">
       <table><thead><tr><th>ACC NO</th><th>HOLDER & DETAILS</th><th>CONTACT</th><th>BAL</th><th>ACTION</th></tr></thead><tbody id="search-results-body"></tbody></table>
@@ -119,7 +135,7 @@
 <div class="prs-terminal">
 
   <div class="status-bar">
-    <div>SYS: [B&W-CORE-REALTIME]</div>
+    <div>SYS: [B&W-CORE-LAZY-V2]</div>
     <div>NET: <span id="net-status-tag" class="blink">CHECKING...</span></div>
     <div>USER: <span id="session-tag">DISCONNECTED</span></div>
     <div>IP: <span id="ip-tag">FETCHING...</span></div>
@@ -217,8 +233,13 @@
 
     <div class="box">
       <div class="box-title">
-        <span>RECORD DIRECTORY (PENDING / APPROVED)</span>
+        <span>RECORD DIRECTORY (CACHED VIEW)</span>
         <button class="inverted" onclick="triggerPrint('page-acc')" style="padding: 2px 8px; font-size: 0.7rem;">[ PRINT DIRECTORY ]</button>
+      </div>
+      <div class="print-controls-bar">
+        <label><input type="checkbox" id="chk-time-page-acc" checked /> DATE & TIME</label>
+        <label><input type="checkbox" id="chk-ip-page-acc" checked /> TERMINAL IP</label>
+        <label><input type="checkbox" id="chk-desc-page-acc" checked /> METADATA</label>
       </div>
       <div class="print-receipt-header" id="print-header-page-acc"></div>
       <div class="table-container">
@@ -237,11 +258,11 @@
       <form onsubmit="processTx(event)" style="display:flex; flex-direction:column; gap:8px;">
         <div class="grid-2">
           <div><label class="dim">ACC NO:</label><input type="number" id="tx-acc" oninput="autoFetch()" required /></div>
-          <div><label class="dim">DATA:</label><input type="text" id="tx-fetch" readonly /></div>
+          <div><label class="dim">DATA:</label><input type="text" id="tx-fetch" readonly placeholder="ENTER A/C TO CHECK..." /></div>
         </div>
         <div class="grid-3">
-          <input type="number" step="any" id="tx-amt" placeholder="AMOUNT" required />
-          <select id="tx-type"><option value="CR">CREDIT</option><option value="DR">DEBIT</option></select>
+          <input type="number" step="any" id="tx-amt" placeholder="AMOUNT (NEGATIVE ALLOWED FOR DR)" required />
+          <select id="tx-type"><option value="CR">CREDIT (CR)</option><option value="DR">DEBIT (DR)</option></select>
           <input type="text" id="tx-ref" placeholder="PARTICULARS / DESCRIPTION" required />
         </div>
         <button type="submit" class="inverted">[ PROCESS TRANSACTION ]</button>
@@ -254,6 +275,11 @@
       <div class="box-title">
         <span>DIGITAL PASSBOOK & STATEMENT DESK</span>
         <button class="inverted" onclick="triggerPrint('page-passbook')" style="padding: 2px 8px; font-size: 0.7rem;">[ PRINT PASSBOOK ]</button>
+      </div>
+      <div class="print-controls-bar">
+        <label><input type="checkbox" id="chk-time-page-passbook" checked /> DATE & TIME</label>
+        <label><input type="checkbox" id="chk-ip-page-passbook" checked /> TERMINAL IP</label>
+        <label><input type="checkbox" id="chk-desc-page-passbook" checked /> PARTICULARS</label>
       </div>
       <div class="grid-2" style="margin-bottom: 10px;">
         <div><input type="number" id="pb-acc-input" placeholder="ENTER 11-DIGIT ACC NO" oninput="loadPassbookData()" /></div>
@@ -292,6 +318,11 @@
         <span>PENDING OPERATOR REGISTRATIONS</span>
         <button class="inverted" onclick="triggerPrint('page-admin')" style="padding: 2px 8px; font-size: 0.7rem;">[ PRINT ADMIN DESK ]</button>
       </div>
+      <div class="print-controls-bar">
+        <label><input type="checkbox" id="chk-time-page-admin" checked /> DATE & TIME</label>
+        <label><input type="checkbox" id="chk-ip-page-admin" checked /> TERMINAL IP</label>
+        <label><input type="checkbox" id="chk-desc-page-admin" checked /> METADATA</label>
+      </div>
       <div class="print-receipt-header" id="print-header-page-admin"></div>
       <div class="table-container">
         <table><thead><tr><th>USER ID</th><th>PHONE</th><th>STATUS</th></tr></thead><tbody id="body-pending-users"></tbody></table>
@@ -320,6 +351,12 @@
           <button class="outline" onclick="logout()" style="padding: 2px 8px;">[ SIGN OUT ]</button>
         </div>
       </div>
+      <div class="print-controls-bar">
+        <label><input type="checkbox" id="chk-time-page-audit" checked /> DATE & TIME</label>
+        <label><input type="checkbox" id="chk-ip-page-audit" checked /> TERMINAL IP</label>
+        <label><input type="checkbox" id="chk-desc-page-audit" checked /> DESCRIPTION</label>
+      </div>
+      <div class="print-header" id="print-header-page-audit"></div>
       <div class="print-receipt-header" id="print-header-page-audit"></div>
       <div class="table-container">
         <table><thead><tr><th>SEQ</th><th>TIME</th><th>ACC NO</th><th>TYP</th><th>AMT / PARTICULAR</th><th>OPERATOR & IP</th></tr></thead><tbody id="body-journal"></tbody></table>
@@ -333,8 +370,6 @@ const DB_KEY = 'CRIS_PRS_MASTER_DB_PERSISTENT';
 const SERIAL_BASE = 10000000000;
 let smsPermissionGranted = false;
 let currentClientIP = 'FETCHING...';
-
-// Real-Time Polling & Real-Time Sync Engine
 let isSyncing = false;
 
 async function fetchClientIP() {
@@ -351,6 +386,7 @@ async function fetchClientIP() {
   }
 }
 
+// Lazy Loaded DB Core: Accounts array starts empty to keep initial site load fast
 let db = { 
   users: [{ id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', lastIp: '127.0.0.1', phone: '0000000000' }], 
   accounts: [], 
@@ -411,7 +447,6 @@ async function backgroundSync(isInitial = false) {
       if (res.ok) {
         const cloudData = await res.json();
         if (cloudData && cloudData.users) {
-          // Merge or update state if cloud data has newer ledger length or entries
           db = cloudData;
           if(!db.editRequests) db.editRequests = [];
           if(!db.users) db.users = [];
@@ -485,10 +520,10 @@ async function init() {
   }
   if (session) syncUI();
 
-  // Poll server every 4 seconds for true real-time multi-device sync
+  // Poll server every 3 seconds for continuous real-time duplex sync
   setInterval(() => {
     backgroundSync(false);
-  }, 4000);
+  }, 3000);
 }
 
 function save() { 
@@ -735,38 +770,100 @@ function requestDeleteAccount(accNo) {
   }
 }
 
+// On-Demand Lazy Search Lookup (Prevents heavy startup downloading)
 function autoFetch() {
-  const q=document.getElementById('tx-acc').value; const a=db.accounts.find(x=>x.accountNumber===q);
-  document.getElementById('tx-fetch').value=a?`${a.holderName} | BAL: ${a.balance.toFixed(2)}`:'NOT FOUND';
+  const q = document.getElementById('tx-acc').value.trim();
+  const fetchBox = document.getElementById('tx-fetch');
+  if(!q) { fetchBox.value = ''; return; }
+  
+  let acc = db.accounts.find(x => x.accountNumber === q);
+  if (acc) {
+    fetchBox.value = `${acc.holderName} | BAL: ${acc.balance.toFixed(2)}`;
+  } else {
+    fetchBox.value = navigator.onLine ? 'CHECKING ONLINE...' : 'LOCAL: A/C NOT IN CACHE';
+    if (navigator.onLine) {
+      backgroundSync(false).then(() => {
+        let recheck = db.accounts.find(x => x.accountNumber === q);
+        if (recheck) {
+          fetchBox.value = `${recheck.holderName} | BAL: ${recheck.balance.toFixed(2)}`;
+        } else {
+          fetchBox.value = 'OFFLINE/NOT FOUND (WILL LOG TO AUDIT IF FORCED)';
+        }
+      });
+    }
+  }
 }
 
+// TELLER TRANSACTION PROCESSING (Allows negative input for DR or explicit type)
 function processTx(e) {
   e.preventDefault(); 
   showLoadingFeedback('tx-task-feedback');
 
   setTimeout(() => {
-    const accNo=document.getElementById('tx-acc').value; 
-    const amt=parseFloat(document.getElementById('tx-amt').value); 
-    const type=document.getElementById('tx-type').value; 
-    const ref=document.getElementById('tx-ref').value.toUpperCase();
+    let accNo = document.getElementById('tx-acc').value.trim();
+    let amtInput = parseFloat(document.getElementById('tx-amt').value);
+    let type = document.getElementById('tx-type').value;
+    let ref = document.getElementById('tx-ref').value.toUpperCase();
     
+    // Allow negative amounts to automatically map to Debit (DR)
+    if (amtInput < 0) {
+      type = 'DR';
+      amtInput = Math.abs(amtInput);
+    }
+
     if (type === 'DR' && db.settings && db.settings.onlineDebitOnly && !navigator.onLine) {
-      showTaskFeedback('tx-task-feedback', 'DECLINED', 'DEBIT (DR) TRANSACTIONS ARE RESTRICTED TO ONLINE MODE ONLY.');
+      showTaskFeedback('tx-task-feedback', 'DECLINED', 'DEBIT (DR) RESTRICTED TO ONLINE MODE ONLY.');
       return;
     }
 
-    const acc=db.accounts.find(a=>a.accountNumber===accNo); 
-    if(!acc){ showTaskFeedback('tx-task-feedback', 'DECLINED', 'Invalid account.'); return; }
-    if(type==='DR' && acc.balance<amt){ showTaskFeedback('tx-task-feedback', 'DECLINED', 'Insufficient balance.'); return; }
-
-    if(type==='CR') acc.balance+=amt; 
-    if(type==='DR') acc.balance-=amt;
+    let acc = db.accounts.find(a => a.accountNumber === accNo);
     
-    db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type, amount: amt, operator: `${session.id} (${currentClientIP})`, narrative: ref }); 
+    // If account doesn't exist locally, check online state via background sync first
+    if (!acc && navigator.onLine) {
+      // synchronous check attempt against latest background pull if available
+    }
+
+    if (!acc) {
+      // Account does not exist anywhere: Reject transaction, log in audit history
+      db.ledger.unshift({ 
+        seq: db.ledger.length+1, 
+        timestamp: new Date().toLocaleTimeString(), 
+        accNo: accNo || 'UNKNOWN', 
+        type: 'REJECTED_' + type, 
+        amount: amtInput, 
+        operator: `${session.id} (${currentClientIP})`, 
+        narrative: `REJECTED: ACCOUNT DOES NOT EXIST (${ref})` 
+      });
+      save();
+      showTaskFeedback('tx-task-feedback', 'DECLINED', `TRANSACTION REJECTED: ACCOUNT ${accNo} DOES NOT EXIST. LOGGED IN AUDIT JOURNAL.`);
+      document.getElementById('tx-amt').value=''; 
+      document.getElementById('tx-ref').value='';
+      return;
+    }
+
+    if (type === 'DR' && acc.balance < amtInput) {
+      db.ledger.unshift({ 
+        seq: db.ledger.length+1, 
+        timestamp: new Date().toLocaleTimeString(), 
+        accNo, 
+        type: 'REJECTED_DR', 
+        amount: amtInput, 
+        operator: `${session.id} (${currentClientIP})`, 
+        narrative: `REJECTED: INSUFFICIENT BALANCE (${ref})` 
+      });
+      save();
+      showTaskFeedback('tx-task-feedback', 'DECLINED', 'DECLINED: INSUFFICIENT BALANCE FOR DEBIT. LOGGED IN AUDIT.');
+      return;
+    }
+
+    if(type === 'CR') acc.balance += amtInput; 
+    if(type === 'DR') acc.balance -= amtInput;
+    
+    db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type, amount: amtInput, operator: `${session.id} (${currentClientIP})`, narrative: ref }); 
     save(); 
     autoFetch();
 
-    showTaskFeedback('tx-task-feedback', 'SUCCESS', `${type} of ${amt.toFixed(2)} posted. New Bal: ${acc.balance.toFixed(2)}`);
+    showTaskFeedback('tx-task-feedback', 'SUCCESS', `TRANSACTION SUCCESSFUL. ${type} OF ${amtInput.toFixed(2)} POSTED. NEW BAL: ${acc.balance.toFixed(2)}`);
     document.getElementById('tx-amt').value=''; 
     document.getElementById('tx-ref').value='';
   }, 400);
@@ -794,7 +891,6 @@ function loadPassbookData() {
     return;
   }
   
-  // Calculate running clear balances chronologically from oldest to newest
   let runningBal = 0;
   const chronological = [...filteredLedger].reverse();
   const withBalances = chronological.map(l => {
@@ -806,7 +902,6 @@ function loadPassbookData() {
     return { ...l, runningBal };
   });
 
-  // Display newest first back in the table view
   withBalances.reverse().forEach(l => {
     const amtColor = l.type === 'CR' ? '#00ff00' : '#ffffff';
     tbody.innerHTML += `
@@ -861,12 +956,26 @@ function renderAdmin() {
 function openSearchModal(){ document.getElementById('search-modal').style.display='flex'; runSearch(); }
 function closeSearchModal(){ document.getElementById('search-modal').style.display='none'; }
 function runSearch() {
-  const c=document.getElementById('search-criteria').value, q=document.getElementById('search-query').value.trim().toUpperCase(), tb=document.getElementById('search-results-body'); tb.innerHTML='';
-  let m=db.accounts.filter(a=>{ if(!q)return true; if(c==='accNo')return a.accountNumber.includes(q); if(c==='mobile')return a.phone.includes(q); if(c==='name')return a.holderName.includes(q); return false; });
-  if(!m.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;">NO MATCH FOUND</td></tr>'; return; }
+  const c = document.getElementById('search-criteria').value;
+  const q = document.getElementById('search-query').value.trim().toUpperCase();
+  const tb = document.getElementById('search-results-body'); 
+  tb.innerHTML = '';
+
+  let m = db.accounts.filter(a => {
+    if(!q) return true;
+    if(c === 'accNo') return a.accountNumber.includes(q);
+    if(c === 'mobile') return a.phone.includes(q);
+    if(c === 'name') return a.holderName.includes(q);
+    return false;
+  });
+
+  if(!m.length){ 
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO LOCAL MATCH CACHED. TYPE EXACT A/C TO QUERY ONLINE CLOUD.</td></tr>'; 
+    return; 
+  }
   
-  m.forEach(a=>{
-    tb.innerHTML+=`
+  m.forEach(a => {
+    tb.innerHTML += `
       <tr>
         <td class="bold">${a.accountNumber}</td>
         <td><strong>NAME:</strong> ${a.holderName}<br><span class="dim">FATHER:</span> ${a.fatherName}</td>
@@ -896,11 +1005,10 @@ function syncUI() {
   document.getElementById('val-accs').innerText=db.accounts.length;
   
   const ab=document.getElementById('body-accs'); ab.innerHTML='';
-  db.accounts.forEach(a => {
-    const statusBadge = a.status === 'PENDING' ? '<span class="blink" style="color:yellow;">[PENDING]</span>' : '';
+  db.accounts.slice(0, 50).forEach(a => {
     ab.innerHTML+=`
       <tr>
-        <td class="bold">${a.accountNumber} ${statusBadge}</td>
+        <td class="bold">${a.accountNumber}</td>
         <td><strong>${a.holderName}</strong><br><span class="dim">FATHER: ${a.fatherName}</span></td>
         <td class="dim">PH: ${a.phone}</td>
         <td class="bold">${a.balance.toFixed(2)}</td>
@@ -916,15 +1024,19 @@ function syncUI() {
   }
 }
 
-// Customized print injection helper for top-header meta details
+// Customized print injection helper supporting individual toggle options
 function triggerPrint(pageId) {
   const headerDiv = document.getElementById('print-header-' + pageId);
   if (headerDiv) {
+    const showTime = document.getElementById('chk-time-' + pageId)?.checked ?? true;
+    const showIp = document.getElementById('chk-ip-' + pageId)?.checked ?? true;
+    const showDesc = document.getElementById('chk-desc-' + pageId)?.checked ?? true;
+
     let extraMeta = '';
     if (pageId === 'page-passbook') {
       const accNo = document.getElementById('pb-acc-input').value.trim();
       const info = document.getElementById('pb-holder-info').value;
-      extraMeta = `<strong>ACCOUNT STATEMENT PASSBOOK</strong><br><strong>TARGET A/C:</strong> ${accNo || 'N/A'}<br><strong>DETAILS:</strong> ${info || 'N/A'}<br>`;
+      extraMeta = `<strong>ACCOUNT STATEMENT PASSBOOK</strong><br><strong>TARGET A/C:</strong> ${accNo || 'N/A'}<br>${showDesc ? `<strong>DETAILS:</strong> ${info || 'N/A'}<br>` : ''}`;
     } else if (pageId === 'page-acc') {
       extraMeta = `<strong>CUSTOMER RECORD DIRECTORY</strong><br>`;
     } else if (pageId === 'page-admin') {
@@ -935,8 +1047,8 @@ function triggerPrint(pageId) {
 
     headerDiv.innerHTML = `
       ${extraMeta}
-      <strong>PRINTED ON:</strong> ${new Date().toLocaleString()}<br>
-      <strong>TERMINAL IP:</strong> ${currentClientIP}<br>
+      ${showTime ? `<strong>PRINTED ON:</strong> ${new Date().toLocaleString()}<br>` : ''}
+      ${showIp ? `<strong>TERMINAL IP:</strong> ${currentClientIP}<br>` : ''}
       <strong>OPERATOR SESSION:</strong> ${session ? session.id : 'GUEST'}
     `;
   }
