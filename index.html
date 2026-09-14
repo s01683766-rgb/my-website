@@ -32,7 +32,7 @@
     #fixed-search-hud button { border: none; font-size: 0.75rem; padding: 4px 8px; }
 
     .box { border: 1px solid var(--fg); padding: 12px; }
-    .box-title { font-size: 0.85rem; border-bottom: 1px dashed var(--fg); padding-bottom: 4px; margin-bottom: 12px; display: flex; justify-content: space-between; font-weight: bold; }
+    .box-title { font-size: 0.85rem; border-bottom: 1px dashed var(--fg); padding-bottom: 4px; margin-bottom: 12px; display: flex; justify-content: space-between; font-weight: bold; align-items: center; }
     .status-bar { border: 2px solid var(--fg); padding: 6px 10px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 90px; }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -60,6 +60,17 @@
     
     #search-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 10000; padding: 14px; flex-direction: column; gap: 10px; }
     .task-result-box { border: 2px solid var(--fg); background: #111; padding: 12px; margin-bottom: 10px; display: none; }
+
+    @media print {
+      body { background: #fff !important; color: #000 !important; }
+      .prs-terminal > *:not(#page-passbook):not(#page-audit):not(#page-acc):not(#page-admin), 
+      #fixed-search-hud, .nav-bar, .status-bar, button, form, .box-title span:last-child { display: none !important; }
+      .view-page { display: flex !important; }
+      .box { border: 1px solid #000 !important; }
+      table { width: 100% !important; border-collapse: collapse !important; }
+      th, td { border: 1px solid #000 !important; color: #000 !important; padding: 6px !important; }
+      th { background: #eee !important; }
+    }
 
     @media (max-width: 650px) {
       .grid-2, .grid-3 { grid-template-columns: 1fr; }
@@ -188,7 +199,10 @@
     </div>
 
     <div class="box">
-      <div class="box-title">RECORD DIRECTORY (PENDING / APPROVED)</div>
+      <div class="box-title">
+        <span>RECORD DIRECTORY (PENDING / APPROVED)</span>
+        <button class="inverted" onclick="window.print()" style="padding: 2px 8px; font-size: 0.7rem;">[ PRINT DIRECTORY ]</button>
+      </div>
       <div class="table-container">
         <table>
           <thead><tr><th>11-DIGIT ACC</th><th>HOLDER & DETAILS</th><th>CONTACT & SMS</th><th>BAL</th><th>ACTIONS</th></tr></thead>
@@ -234,11 +248,10 @@
               <th>TYPE</th>
               <th>PARTICULARS / DESCRIPTION</th>
               <th>AMOUNT</th>
-              <th>OPERATOR</th>
             </tr>
           </thead>
           <tbody id="body-passbook-ledger">
-            <tr><td colspan="5" style="text-align:center;">ENTER AN ACCOUNT NUMBER TO VIEW PASSBOOK</td></tr>
+            <tr><td colspan="4" style="text-align:center;">ENTER AN ACCOUNT NUMBER TO VIEW PASSBOOK</td></tr>
           </tbody>
         </table>
       </div>
@@ -275,9 +288,15 @@
 
   <div class="view-page" id="page-audit">
     <div class="box">
-      <div class="box-title"><span>IMMUTABLE JOURNAL</span><button class="outline" onclick="logout()" style="padding: 2px 8px;">[ SIGN OUT ]</button></div>
+      <div class="box-title">
+        <span>IMMUTABLE JOURNAL</span>
+        <div>
+          <button class="inverted" onclick="window.print()" style="padding: 2px 8px; font-size: 0.7rem; margin-right: 6px;">[ PRINT JOURNAL ]</button>
+          <button class="outline" onclick="logout()" style="padding: 2px 8px;">[ SIGN OUT ]</button>
+        </div>
+      </div>
       <div class="table-container">
-        <table><thead><tr><th>SEQ</th><th>TIME</th><th>ACC NO</th><th>TYP</th><th>AMT / PARTICULAR</th><th>OP & IP</th></tr></thead><tbody id="body-journal"></tbody></table>
+        <table><thead><tr><th>SEQ</th><th>TIME</th><th>ACC NO</th><th>TYP</th><th>AMT / PARTICULAR</th><th>OPERATOR</th></tr></thead><tbody id="body-journal"></tbody></table>
       </div>
     </div>
   </div>
@@ -302,14 +321,14 @@ async function fetchClientIP() {
     const ipTag = document.getElementById('ip-tag');
     if(ipTag) ipTag.innerText = currentClientIP;
   } catch(e) {
-    currentClientIP = 'LOCAL_NET';
+    currentClientIP = '0.0.0.0';
     const ipTag = document.getElementById('ip-tag');
     if(ipTag) ipTag.innerText = currentClientIP;
   }
 }
 
 let db = { 
-  users: [{ id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', lastIp: 'N/A', phone: '0000000000' }], 
+  users: [{ id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', lastIp: '0.0.0.0', phone: '0000000000' }], 
   accounts: [], 
   ledger: [], 
   editRequests: [],
@@ -325,7 +344,6 @@ function showTaskFeedback(containerId, status, message) {
   box.innerHTML = `<div style="color:${color}; font-weight:bold;">[TASK STATUS: ${status}]</div><div style="font-size:0.75rem; margin-top:2px;">${message}</div>`;
 }
 
-// Helper: Show instant 3-dot loading state in feedback boxes
 function showLoadingFeedback(containerId) {
   const box = document.getElementById(containerId);
   if(!box) return;
@@ -334,7 +352,6 @@ function showLoadingFeedback(containerId) {
   box.innerHTML = `<div style="color:#ffff00; font-weight:bold;">PROCESSING<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>`;
 }
 
-// Automatic Legacy Migration: Pulls old data if found under older version keys
 function migrateLegacyData() {
   const legacyKeys = ['CRIS_BW_MASTER_FINAL_V23', 'CRIS_BW_MASTER_FINAL_V22', 'CRIS_BW_MASTER_FINAL_V32', 'CRIS_BW_MASTER_FINAL_V31', 'CRIS_BW_MASTER_FINAL_V33'];
   let existingData = localStorage.getItem(DB_KEY);
@@ -355,13 +372,11 @@ function migrateLegacyData() {
 async function init(isSilent = false) { 
   const syncTag = document.getElementById('cloud-sync-status');
   
-  // 1. Load from persistent local storage (with legacy migration support)
   const local = migrateLegacyData();
   if (local) {
     try { db = JSON.parse(local); } catch(e) {}
   }
 
-  // 2. Fetch latest state from cloud database
   try {
     if(syncTag) syncTag.innerText = 'DOWNLOADING...';
     const cloudRes = await fetch('/.netlify/functions/save-data', {
@@ -446,14 +461,14 @@ function handleLogon(e) {
     const uid=document.getElementById('inp-uid').value.trim().toUpperCase(), pin=document.getElementById('inp-pin').value.trim();
     let u = db.users.find(x=>x.id===uid && x.pin===pin);
     if(!u && uid==='ADMIN' && pin==='9999') {
-      u={id:'ADMIN',pin:'9999',role:'ADMIN',status:'ACTIVE',lastIp: currentClientIP, phone:'0000000000'};
+      u={id:'ADMIN',pin:'9999',role:'ADMIN',status:'ACTIVE',lastIp: '0.0.0.0', phone:'0000000000'};
       db.users.push(u);
     }
     if(!u){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Invalid credentials.'); return; }
     if(u.status==='PENDING'){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Awaiting admin approval.'); return; }
     if(u.status==='SUSPENDED'){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Account suspended.'); return; }
 
-    u.lastIp = currentClientIP;
+    u.lastIp = '0.0.0.0';
     session=u; 
     save();
 
@@ -476,7 +491,7 @@ function handleOnlineReg(e) {
 
     if(db.users.some(x => x.id === uid)) { showTaskFeedback('reg-task-feedback', 'DECLINED', 'ID already exists.'); return; }
 
-    db.users.push({ id: uid, pin: pin, role: 'OPERATOR', status: 'PENDING', lastIp: currentClientIP, phone: phone });
+    db.users.push({ id: uid, pin: pin, role: 'OPERATOR', status: 'PENDING', lastIp: '0.0.0.0', phone: phone });
     save();
     showTaskFeedback('reg-task-feedback', 'SUCCESS', 'Registration submitted. Pending Admin approval.');
     setTimeout(() => { toggleAuth(); }, 1000);
@@ -576,7 +591,7 @@ function manualAccount(e) {
       smsOptIn: (document.getElementById('acc-sms').value==='ON') 
     });
     
-    db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_OPEN', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: 'NEW ACCOUNT OPENED' });
+    db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_OPEN', amount: 0, operator: `${session.id}`, narrative: 'NEW ACCOUNT OPENED' });
     save(); 
 
     showTaskFeedback('acc-task-feedback', 'SUCCESS', `Account ${accNo} created & synced.`);
@@ -622,7 +637,7 @@ function saveAccEdit(e) {
       const acc = db.accounts.find(a => a.accountNumber === editingAccNo);
       if(acc) {
         Object.assign(acc, updatedData);
-        db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: `${session.id} (ADMIN)`, narrative: 'ADMIN EDIT' });
+        db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: `${session.id}`, narrative: 'ADMIN EDIT' });
         save();
         showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Account updated.');
       }
@@ -680,7 +695,7 @@ function processTx(e) {
     if(type==='CR') acc.balance+=amt; 
     if(type==='DR') acc.balance-=amt;
     
-    db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type, amount: amt, operator: `${session.id} (${currentClientIP})`, narrative: ref }); 
+    db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type, amount: amt, operator: `${session.id}`, narrative: ref }); 
     save(); 
     autoFetch();
 
@@ -700,7 +715,7 @@ function loadPassbookData() {
   const acc = db.accounts.find(a => a.accountNumber === accNo);
   if (!acc) {
     infoField.value = 'ACCOUNT NOT FOUND';
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO ACCOUNT MATCHED</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">NO ACCOUNT MATCHED</td></tr>';
     return;
   }
   
@@ -708,7 +723,7 @@ function loadPassbookData() {
   
   const filteredLedger = db.ledger.filter(l => l.accNo === accNo);
   if (!filteredLedger.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO TRANSACTION HISTORY FOR THIS A/C</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">NO TRANSACTION HISTORY FOR THIS A/C</td></tr>';
     return;
   }
   
@@ -720,7 +735,6 @@ function loadPassbookData() {
         <td class="bold" style="color: ${amtColor};">${l.type}</td>
         <td>${l.narrative || 'STANDARD TRANSACTION'}</td>
         <td class="bold">${l.amount ? l.amount.toFixed(2) : '0.00'}</td>
-        <td class="dim">${l.operator}</td>
       </tr>`;
   });
 }
@@ -760,7 +774,7 @@ function renderAdmin() {
   const uBody=document.getElementById('body-users'); uBody.innerHTML='';
   db.users.forEach((u) => {
     const act = (u.id !== 'ADMIN') ? `<button onclick="toggleUserSuspend('${u.id}')">${u.status==='SUSPENDED'?'UNSUSPEND':'SUSPEND'}</button>` : '<span class="dim">SYSTEM</span>';
-    uBody.innerHTML+=`<tr><td class="bold">${u.id}</td><td>${u.role}</td><td>${u.status}</td><td class="dim">${u.lastIp||'N/A'}</td><td>${act}</td></tr>`;
+    uBody.innerHTML+=`<tr><td class="bold">${u.id}</td><td>${u.role}</td><td>${u.status}</td><td class="dim">0.000.0</td><td>${act}</td></tr>`;
   });
 }
 
@@ -835,7 +849,7 @@ function syncUI() {
   if(jb) {
     jb.innerHTML = '';
     db.ledger.slice(0, 50).forEach(l => {
-      jb.innerHTML += `<tr><td>${l.seq}</td><td>${l.timestamp}</td><td class="bold">${l.accNo || 'SYS'}</td><td>${l.type}</td><td>${l.amount ? l.amount.toFixed(2) : '0.00'} (${l.narrative})</td><td class="dim">${l.operator}</td></tr>`;
+      jb.innerHTML += `<tr><td>${l.seq}</td><td>${l.timestamp}</td><td class="bold">${l.accNo || 'SYS'}</td><td>${l.type}</td><td>${l.amount ? l.amount.toFixed(2) : '0.00'} (${l.narrative})</td><td class="dim">0.0.0.0</td></tr>`;
     });
   }
 }
@@ -863,7 +877,7 @@ async function syncPendingDataToServer() {
       if(syncTag) syncTag.innerText = 'SYNC REJECTED';
     }
   } catch (e) {
-    if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
+    if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)', 0;
   }
 }
 
