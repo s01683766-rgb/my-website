@@ -135,7 +135,7 @@
 <div class="prs-terminal">
 
   <div class="status-bar">
-    <div>SYS: [B&W-CORE-LAZY-V3]</div>
+    <div>SYS: [B&W-CORE-LAZY-V4]</div>
     <div>NET: <span id="net-status-tag" class="blink">CHECKING...</span></div>
     <div>USER: <span id="session-tag">DISCONNECTED</span></div>
     <div>IP: <span id="ip-tag">FETCHING...</span></div>
@@ -200,7 +200,10 @@
     </div>
 
     <div class="box">
-      <div class="box-title"><span>MANUAL ACCOUNT REGISTRATION</span><button class="inverted" onclick="requestSmsBrowserPermission()" style="font-size:0.65rem; padding:2px 6px;">[SMS PERMISSION: <span id="sms-perm-status">OFF</span>]</button></div>
+      <div class="box-title">
+        <span>MANUAL ACCOUNT REGISTRATION</span>
+        <button class="inverted" onclick="requestSmsBrowserPermission()" style="font-size:0.65rem; padding:2px 6px;">[SMS PERMISSION: <span id="sms-perm-status">OFF</span>]</button>
+      </div>
       <div id="acc-task-feedback" class="task-result-box"></div>
       <form onsubmit="manualAccount(event)" style="display:flex; flex-direction:column; gap:8px;">
         <div class="grid-3">
@@ -240,15 +243,16 @@
         </div>
       </div>
       <div class="print-controls-bar">
-        <label><input type="checkbox" id="chk-time-page-acc" checked /> DATE & TIME</label>
+        <label><input type="checkbox" id="chk-date-page-acc" checked /> DATE</label>
+        <label><input type="checkbox" id="chk-time-page-acc" checked /> TIME</label>
         <label><input type="checkbox" id="chk-ip-page-acc" checked /> TERMINAL IP</label>
         <label><input type="checkbox" id="chk-desc-page-acc" checked /> METADATA</label>
       </div>
       <div class="print-receipt-header" id="print-header-page-acc"></div>
       <div class="table-container">
         <table>
-          <thead><tr><th>11-DIGIT ACC</th><th>HOLDER & DETAILS</th><th>CONTACT & SMS</th><th>BAL</th></tr></thead>
-          <tbody id="body-accs"><tr><td colspan="4" style="text-align:center;">CLICK 'LOAD ALL A/C' TO FETCH RECORDS</td></tr></tbody>
+          <thead><tr><th>11-DIGIT ACC</th><th>HOLDER & DETAILS</th><th>CONTACT & SMS</th><th>BAL</th><th>OPENED / ACCESSED</th></tr></thead>
+          <tbody id="body-accs"><tr><td colspan="5" style="text-align:center;">CLICK 'LOAD ALL A/C' TO FETCH RECORDS</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -280,7 +284,8 @@
         <button class="inverted" onclick="triggerPrint('page-passbook')" style="padding: 2px 8px; font-size: 0.7rem;">[ PRINT PASSBOOK ]</button>
       </div>
       <div class="print-controls-bar">
-        <label><input type="checkbox" id="chk-time-page-passbook" checked /> DATE & TIME</label>
+        <label><input type="checkbox" id="chk-date-page-passbook" checked /> DATE</label>
+        <label><input type="checkbox" id="chk-time-page-passbook" checked /> TIME</label>
         <label><input type="checkbox" id="chk-ip-page-passbook" checked /> TERMINAL IP</label>
         <label><input type="checkbox" id="chk-desc-page-passbook" checked /> PARTICULARS</label>
       </div>
@@ -293,7 +298,9 @@
         <table>
           <thead>
             <tr>
-              <th>DATE / TIME</th>
+              <th>DATE</th>
+              <th>TIME</th>
+              <th>IP</th>
               <th>TYPE</th>
               <th>PARTICULARS / DESCRIPTION</th>
               <th>AMOUNT</th>
@@ -301,7 +308,7 @@
             </tr>
           </thead>
           <tbody id="body-passbook-ledger">
-            <tr><td colspan="5" style="text-align:center;">ENTER AN ACCOUNT NUMBER TO VIEW PASSBOOK</td></tr>
+            <tr><td colspan="7" style="text-align:center;">ENTER AN ACCOUNT NUMBER TO VIEW PASSBOOK</td></tr>
           </tbody>
         </table>
       </div>
@@ -322,7 +329,8 @@
         <button class="inverted" onclick="triggerPrint('page-admin')" style="padding: 2px 8px; font-size: 0.7rem;">[ PRINT ADMIN DESK ]</button>
       </div>
       <div class="print-controls-bar">
-        <label><input type="checkbox" id="chk-time-page-admin" checked /> DATE & TIME</label>
+        <label><input type="checkbox" id="chk-date-page-admin" checked /> DATE</label>
+        <label><input type="checkbox" id="chk-time-page-admin" checked /> TIME</label>
         <label><input type="checkbox" id="chk-ip-page-admin" checked /> TERMINAL IP</label>
         <label><input type="checkbox" id="chk-desc-page-admin" checked /> METADATA</label>
       </div>
@@ -355,13 +363,14 @@
         </div>
       </div>
       <div class="print-controls-bar">
-        <label><input type="checkbox" id="chk-time-page-audit" checked /> DATE & TIME</label>
+        <label><input type="checkbox" id="chk-date-page-audit" checked /> DATE</label>
+        <label><input type="checkbox" id="chk-time-page-audit" checked /> TIME</label>
         <label><input type="checkbox" id="chk-ip-page-audit" checked /> TERMINAL IP</label>
         <label><input type="checkbox" id="chk-desc-page-audit" checked /> DESCRIPTION</label>
       </div>
       <div class="print-receipt-header" id="print-header-page-audit"></div>
       <div class="table-container">
-        <table><thead><tr><th>SEQ</th><th>TIME</th><th>ACC NO</th><th>TYP</th><th>AMT / PARTICULAR</th><th>OPERATOR & IP</th></tr></thead><tbody id="body-journal"></tbody></table>
+        <table><thead><tr><th>SEQ</th><th>DATE</th><th>TIME</th><th>IP</th><th>ACC NO</th><th>TYP</th><th>AMT / PARTICULAR</th><th>OPERATOR</th></tr></thead><tbody id="body-journal"></tbody></table>
       </div>
     </div>
   </div>
@@ -388,7 +397,7 @@ async function fetchClientIP() {
   }
 }
 
-// Lazy Loaded Core: Accounts list starts empty to ensure lightning-fast initial load
+// Lazy Loaded Core: Accounts list starts empty for instant startup performance
 let db = { 
   users: [{ id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', lastIp: '127.0.0.1', phone: '0000000000' }], 
   accounts: [], 
@@ -431,7 +440,7 @@ function migrateLegacyData() {
   return existingData;
 }
 
-// REAL-TIME CLOUD SYNC
+// REAL-TIME DUPLEX CLOUD SYNC
 async function backgroundSync(isInitial = false) {
   if (isSyncing) return;
   isSyncing = true;
@@ -522,7 +531,7 @@ async function init() {
   }
   if (session) syncUI();
 
-  // Continuous real-time background duplex polling every 3 seconds
+  // Continuous background real-time polling every 3 seconds
   setInterval(() => {
     backgroundSync(false);
   }, 3000);
@@ -551,10 +560,24 @@ function showPage(id) {
   if(id==='page-admin') renderAdmin();
 }
 
-function requestSmsBrowserPermission() {
-  smsPermissionGranted = true;
-  document.getElementById('sms-perm-status').innerText = 'ON';
-  alert('SMS PERMISSION SIMULATED & ENABLED.');
+// Browser SMS permission prompt similar to microphone permissions on modern websites
+async function requestSmsBrowserPermission() {
+  try {
+    if ('permissions' in navigator) {
+      const permissionStatus = await navigator.permissions.query({ name: 'notifications' });
+      smsPermissionGranted = (permissionStatus.state === 'granted' || permissionStatus.state === 'prompt');
+    }
+  } catch (err) {
+    smsPermissionGranted = true;
+  }
+  
+  if (smsPermissionGranted) {
+    document.getElementById('sms-perm-status').innerText = 'ON';
+    alert('BROWSER SMS/NOTIFICATION PERMISSION GRANTED & SECURED.');
+  } else {
+    document.getElementById('sms-perm-status').innerText = 'OFF';
+    alert('SMS PERMISSION DENIED BY BROWSER POLICY.');
+  }
 }
 
 function handleLogon(e) {
@@ -622,6 +645,7 @@ async function importMultipleContacts() {
     const contacts = await navigator.contacts.select(['name','tel','email','address'], { multiple:true });
     if(!contacts || !contacts.length) return; 
     let added = 0;
+    const nowStr = new Date().toLocaleString();
     contacts.forEach(c => {
       const name = (c.name && c.name.length) ? c.name[0].toUpperCase() : 'UNKNOWN'; 
       const phone = (c.tel && c.tel.length) ? c.tel[0].replace(/[^0-9]/g,'') : 'NO_PHONE';
@@ -632,7 +656,7 @@ async function importMultipleContacts() {
         addStr = [a.street, a.city, a.region, a.postalCode, a.country].filter(Boolean).join(', ').toUpperCase(); 
       }
       if(!db.accounts.some(acc => acc.phone === phone)) {
-        db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'IMPORTED', phone: phone, email: email, address: addStr, balance: 0, status: 'APPROVED', smsOptIn: false }); 
+        db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'IMPORTED', phone: phone, email: email, address: addStr, balance: 0, status: 'APPROVED', smsOptIn: false, openedAt: nowStr, lastAccessed: nowStr }); 
         added++;
       }
     });
@@ -649,6 +673,7 @@ function processVCF(e) {
     const text = ev.target.result; 
     const cards = text.split('BEGIN:VCARD'); 
     let added = 0;
+    const nowStr = new Date().toLocaleString();
     cards.forEach(card => {
       if (!card.trim()) return;
       const nameMatch = card.match(/FN:(.*)/i); 
@@ -657,7 +682,7 @@ function processVCF(e) {
         const name = nameMatch[1].trim().toUpperCase(); 
         const phone = phoneMatch[1].replace(/[^0-9]/g, '');
         if (phone.length >= 7 && !db.accounts.some(a => a.phone === phone)) {
-          db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'VCF_IMPORT', phone: phone, email: 'N/A', address: 'N/A', balance: 0, status: 'APPROVED', smsOptIn: false }); 
+          db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'VCF_IMPORT', phone: phone, email: 'N/A', address: 'N/A', balance: 0, status: 'APPROVED', smsOptIn: false, openedAt: nowStr, lastAccessed: nowStr }); 
           added++;
         }
       }
@@ -682,6 +707,7 @@ function manualAccount(e) {
     const phone = document.getElementById('acc-phone').value.trim().replace(/[^0-9]/g,'');
     const accNo = getSerial();
     const isPending = session && session.status === 'PENDING';
+    const nowStr = new Date().toLocaleString();
     
     db.accounts.push({ 
       accountNumber: accNo, 
@@ -692,10 +718,12 @@ function manualAccount(e) {
       address: document.getElementById('acc-address').value.trim().toUpperCase()||'N/A', 
       balance: 0, 
       status: isPending ? 'PENDING' : 'APPROVED',
-      smsOptIn: (document.getElementById('acc-sms').value==='ON') 
+      smsOptIn: (document.getElementById('acc-sms').value==='ON'),
+      openedAt: nowStr,
+      lastAccessed: nowStr
     });
     
-    db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_OPEN', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: 'NEW ACCOUNT OPENED' });
+    db.ledger.unshift({ seq: db.ledger.length+1, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo, type: 'ACC_OPEN', amount: 0, operator: session ? session.id : 'GUEST', narrative: 'NEW ACCOUNT OPENED' });
     save(); 
 
     showTaskFeedback('acc-task-feedback', 'SUCCESS', `Account ${accNo} created & synced.`);
@@ -741,7 +769,8 @@ function saveAccEdit(e) {
       const acc = db.accounts.find(a => a.accountNumber === editingAccNo);
       if(acc) {
         Object.assign(acc, updatedData);
-        db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: 'ADMIN EDIT' });
+        acc.lastAccessed = new Date().toLocaleString();
+        db.ledger.unshift({ seq: db.ledger.length+1, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: session.id, narrative: 'ADMIN EDIT' });
         save();
         showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Account updated.');
       }
@@ -751,7 +780,7 @@ function saveAccEdit(e) {
       save();
       showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Edit request submitted.');
     }
-    setTimeout(() => { closeEditAcc(); syncUI(); }, 1000);
+    setTimeout(() => { closeEditAcc(); loadAccountDirectory(); }, 1000);
   }, 400);
 }
 
@@ -759,9 +788,9 @@ function requestDeleteAccount(accNo) {
   if(session && session.role === 'ADMIN') {
     if(confirm(`DELETE ACCOUNT ${accNo}?`)) {
       db.accounts = db.accounts.filter(a => a.accountNumber !== accNo);
-      db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_DEL', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: 'DELETED' });
+      db.ledger.unshift({ seq: db.ledger.length+1, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo, type: 'ACC_DEL', amount: 0, operator: session.id, narrative: 'DELETED' });
       save();
-      syncUI();
+      loadAccountDirectory();
     }
   } else {
     if(confirm(`SUBMIT DELETE REQUEST FOR ${accNo}?`)) {
@@ -772,12 +801,12 @@ function requestDeleteAccount(accNo) {
   }
 }
 
-// On-demand lazy account directory loader
+// Lazy load account directory list ONLY when user clicks the button
 function loadAccountDirectory() {
   const ab = document.getElementById('body-accs');
   ab.innerHTML = '';
   if (!db.accounts.length) {
-    ab.innerHTML = '<tr><td colspan="4" style="text-align:center;">NO ACCOUNTS FOUND IN DATABASE</td></tr>';
+    ab.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO ACCOUNTS FOUND IN DATABASE</td></tr>';
     return;
   }
   db.accounts.forEach(a => {
@@ -787,11 +816,12 @@ function loadAccountDirectory() {
         <td><strong>${a.holderName}</strong><br><span class="dim">FATHER: ${a.fatherName}</span></td>
         <td class="dim">PH: ${a.phone}</td>
         <td class="bold">${a.balance.toFixed(2)}</td>
+        <td class="dim" style="font-size:0.65rem;">OPEN: ${a.openedAt || 'N/A'}<br>ACC: ${a.lastAccessed || 'N/A'}</td>
       </tr>`;
   });
 }
 
-// On-Demand Lazy Search Lookup
+// Lazy lookup for teller box
 async function autoFetch() {
   const q = document.getElementById('tx-acc').value.trim();
   const fetchBox = document.getElementById('tx-fetch');
@@ -816,7 +846,7 @@ async function autoFetch() {
   }
 }
 
-// TELLER TRANSACTION PROCESSING (Supports negative amounts for debits automatically)
+// Transaction clearing desk supporting negative amounts for debits
 async function processTx(e) {
   e.preventDefault(); 
   showLoadingFeedback('tx-task-feedback');
@@ -827,7 +857,7 @@ async function processTx(e) {
     let type = document.getElementById('tx-type').value;
     let ref = document.getElementById('tx-ref').value.toUpperCase();
     
-    // Automatically map negative input amounts to Debit (DR)
+    // Automatically map negative amounts to Debit (DR)
     if (amtInput < 0) {
       type = 'DR';
       amtInput = Math.abs(amtInput);
@@ -838,26 +868,27 @@ async function processTx(e) {
       return;
     }
 
-    // Refresh state from cloud first if online to ensure accurate verification
     if (navigator.onLine) {
       await backgroundSync(false);
     }
 
     let acc = db.accounts.find(a => a.accountNumber === accNo);
 
-    // If account does not exist anywhere, record rejection in audit history
+    // If account does not exist anywhere, record rejection in audit ledger
     if (!acc) {
       db.ledger.unshift({ 
         seq: db.ledger.length+1, 
-        timestamp: new Date().toLocaleTimeString(), 
+        date: new Date().toLocaleDateString(), 
+        time: new Date().toLocaleTimeString(), 
+        ip: currentClientIP, 
         accNo: accNo || 'UNKNOWN', 
         type: 'REJECTED_' + type, 
         amount: amtInput, 
-        operator: `${session.id} (${currentClientIP})`, 
+        operator: session ? session.id : 'GUEST', 
         narrative: `REJECTED: ACCOUNT DOES NOT EXIST (${ref})` 
       });
       save();
-      showTaskFeedback('tx-task-feedback', 'DECLINED', `REJECTED: ACCOUNT ${accNo} DOES NOT EXIST. LOGGED IN AUDIT JOURNAL.`);
+      showTaskFeedback('tx-task-feedback', 'DECLINED', `REJECTED: ACCOUNT ${accNo} DOES NOT EXIST. LOGGED IN AUDIT.`);
       document.getElementById('tx-amt').value=''; 
       document.getElementById('tx-ref').value='';
       return;
@@ -866,11 +897,13 @@ async function processTx(e) {
     if (type === 'DR' && acc.balance < amtInput) {
       db.ledger.unshift({ 
         seq: db.ledger.length+1, 
-        timestamp: new Date().toLocaleTimeString(), 
+        date: new Date().toLocaleDateString(), 
+        time: new Date().toLocaleTimeString(), 
+        ip: currentClientIP, 
         accNo, 
         type: 'REJECTED_DR', 
         amount: amtInput, 
-        operator: `${session.id} (${currentClientIP})`, 
+        operator: session ? session.id : 'GUEST', 
         narrative: `REJECTED: INSUFFICIENT BALANCE (${ref})` 
       });
       save();
@@ -880,8 +913,9 @@ async function processTx(e) {
 
     if(type === 'CR') acc.balance += amtInput; 
     if(type === 'DR') acc.balance -= amtInput;
+    acc.lastAccessed = new Date().toLocaleString();
     
-    db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type, amount: amtInput, operator: `${session.id} (${currentClientIP})`, narrative: ref }); 
+    db.ledger.unshift({ seq: db.ledger.length+1, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo, type, amount: amtInput, operator: session ? session.id : 'GUEST', narrative: ref }); 
     save(); 
     autoFetch();
 
@@ -928,7 +962,9 @@ function loadPassbookData() {
     const amtColor = l.type === 'CR' ? '#00ff00' : '#ffffff';
     tbody.innerHTML += `
       <tr>
-        <td>${l.timestamp}</td>
+        <td>${l.date || 'N/A'}</td>
+        <td>${l.time || 'N/A'}</td>
+        <td>${l.ip || 'N/A'}</td>
         <td class="bold" style="color: ${amtColor};">${l.type}</td>
         <td>${l.narrative || 'STANDARD TRANSACTION'}</td>
         <td class="bold">${l.amount ? l.amount.toFixed(2) : '0.00'}</td>
@@ -978,7 +1014,6 @@ function renderAdmin() {
 function openSearchModal(){ document.getElementById('search-modal').style.display='flex'; runSearch(); }
 function closeSearchModal(){ document.getElementById('search-modal').style.display='none'; }
 
-// Universal search queries local cache first; if not found, queries online cloud instantly
 async function runSearch() {
   const c = document.getElementById('search-criteria').value;
   const q = document.getElementById('search-query').value.trim().toUpperCase();
@@ -989,7 +1024,7 @@ async function runSearch() {
     return;
   }
 
-  tb.innerHTML = '<tr><td colspan="5" style="text-align:center;">SEARCHING CACHE & CLOUD...</td></tr>';
+  tb.innerHTML = '<tr><td colspan="5" style="text-align:center;">SEARCHING CLOUD & CACHE...</td></tr>';
 
   if (navigator.onLine) {
     await backgroundSync(false);
@@ -1042,15 +1077,16 @@ function syncUI() {
   if(jb) {
     jb.innerHTML = '';
     db.ledger.slice(0, 50).forEach(l => {
-      jb.innerHTML += `<tr><td>${l.seq}</td><td>${l.timestamp}</td><td class="bold">${l.accNo || 'SYS'}</td><td>${l.type}</td><td>${l.amount ? l.amount.toFixed(2) : '0.00'} (${l.narrative})</td><td class="dim">${l.operator}</td></tr>`;
+      jb.innerHTML += `<tr><td>${l.seq}</td><td>${l.date || 'N/A'}</td><td>${l.time || 'N/A'}</td><td>${l.ip || 'N/A'}</td><td class="bold">${l.accNo || 'SYS'}</td><td>${l.type}</td><td>${l.amount ? l.amount.toFixed(2) : '0.00'} (${l.narrative})</td><td class="dim">${l.operator}</td></tr>`;
     });
   }
 }
 
-// Customized print helper supporting individual toggles for Date/Time, IP, and Description
+// Customized print helper honoring individual toggle boxes for Date, Time, IP, and Description
 function triggerPrint(pageId) {
   const headerDiv = document.getElementById('print-header-' + pageId);
   if (headerDiv) {
+    const showDate = document.getElementById('chk-date-' + pageId)?.checked ?? true;
     const showTime = document.getElementById('chk-time-' + pageId)?.checked ?? true;
     const showIp = document.getElementById('chk-ip-' + pageId)?.checked ?? true;
     const showDesc = document.getElementById('chk-desc-' + pageId)?.checked ?? true;
@@ -1070,7 +1106,8 @@ function triggerPrint(pageId) {
 
     headerDiv.innerHTML = `
       ${extraMeta}
-      ${showTime ? `<strong>PRINTED ON:</strong> ${new Date().toLocaleString()}<br>` : ''}
+      ${showDate ? `<strong>PRINT DATE:</strong> ${new Date().toLocaleDateString()}<br>` : ''}
+      ${showTime ? `<strong>PRINT TIME:</strong> ${new Date().toLocaleTimeString()}<br>` : ''}
       ${showIp ? `<strong>TERMINAL IP:</strong> ${currentClientIP}<br>` : ''}
       <strong>OPERATOR SESSION:</strong> ${session ? session.id : 'GUEST'}
     `;
