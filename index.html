@@ -14,6 +14,20 @@
     .bold { font-weight: bold; } .dim { color: var(--dim); } .blink { animation: blinker 1s linear infinite; }
     @keyframes blinker { 50% { opacity: 0; } }
 
+    /* Blinking Dots Indicator Animation */
+    .loading-dots span {
+      animation: dotBlink 1.4s infinite both;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+    .loading-dots span:nth-child(2) { animation-delay: .2s; }
+    .loading-dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes dotBlink {
+      0% { opacity: .2; }
+      20% { opacity: 1; }
+      100% { opacity: .2; }
+    }
+
     #fixed-search-hud { position: fixed; top: 8px; right: 8px; z-index: 9999; background: var(--bg); border: 2px solid var(--fg); padding: 4px; }
     #fixed-search-hud button { border: none; font-size: 0.75rem; padding: 4px 8px; }
 
@@ -32,8 +46,8 @@
     button:active { background: var(--fg); color: var(--bg); }
     button.inverted { background: var(--fg); color: var(--bg); }
 
-    .nav-bar { display: none; grid-template-columns: repeat(5, 1fr); gap: 4px; border-bottom: 2px solid var(--fg); padding-bottom: 8px; }
-    .nav-btn { background: var(--bg); color: var(--dim); border: 1px solid var(--dim); }
+    .nav-bar { display: none; grid-template-columns: repeat(6, 1fr); gap: 4px; border-bottom: 2px solid var(--fg); padding-bottom: 8px; }
+    .nav-btn { background: var(--bg); color: var(--dim); border: 1px solid var(--dim); font-size: 0.65rem; }
     .nav-btn.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 
     .table-container { max-height: 350px; overflow-y: auto; border: 1px solid var(--fg); }
@@ -50,7 +64,7 @@
     @media (max-width: 650px) {
       .grid-2, .grid-3 { grid-template-columns: 1fr; }
       .nav-bar { grid-template-columns: repeat(3, 1fr); }
-      #btn-admin, .nav-btn:nth-child(5) { grid-column: span 1.5; }
+      #btn-admin, .nav-btn:nth-child(6) { grid-column: span 1.5; }
       .status-bar { flex-direction: column; text-align: left; margin-right: 0; }
       #fixed-search-hud { position: static; margin-bottom: 8px; }
       #fixed-search-hud button { width: 100%; padding: 12px; font-size: 1rem; border: 1px dashed var(--fg); }
@@ -77,7 +91,7 @@
 <div class="prs-terminal">
 
   <div class="status-bar">
-    <div>SYS: [B&W-CORE-V23-SYNC]</div>
+    <div>SYS: [B&W-CORE-PERSISTENT]</div>
     <div>NET: <span id="net-status-tag" class="blink">CHECKING...</span></div>
     <div>USER: <span id="session-tag">DISCONNECTED</span></div>
     <div>IP: <span id="ip-tag">FETCHING...</span></div>
@@ -117,8 +131,9 @@
     <button class="nav-btn active" onclick="showPage('page-dash')">1.DASH</button>
     <button class="nav-btn" onclick="showPage('page-acc')">2.ACCOUNTS</button>
     <button class="nav-btn" onclick="showPage('page-teller')">3.TELLER</button>
-    <button class="nav-btn" id="btn-admin" onclick="showPage('page-admin')">4.ADMIN</button>
-    <button class="nav-btn" onclick="showPage('page-audit')">5.AUDIT</button>
+    <button class="nav-btn" onclick="showPage('page-passbook')">4.PASSBOOK</button>
+    <button class="nav-btn" id="btn-admin" onclick="showPage('page-admin')">5.ADMIN</button>
+    <button class="nav-btn" onclick="showPage('page-audit')">6.AUDIT</button>
   </nav>
 
   <div class="view-page" id="page-dash">
@@ -195,10 +210,38 @@
         <div class="grid-3">
           <input type="number" step="any" id="tx-amt" placeholder="AMOUNT" required />
           <select id="tx-type"><option value="CR">CREDIT</option><option value="DR">DEBIT</option></select>
-          <input type="text" id="tx-ref" placeholder="PARTICULARS" required />
+          <input type="text" id="tx-ref" placeholder="PARTICULARS / DESCRIPTION" required />
         </div>
         <button type="submit" class="inverted">[ PROCESS TRANSACTION ]</button>
       </form>
+    </div>
+  </div>
+
+  <div class="view-page" id="page-passbook">
+    <div class="box">
+      <div class="box-title">
+        <span>DIGITAL PASSBOOK & STATEMENT DESK</span>
+      </div>
+      <div class="grid-2" style="margin-bottom: 10px;">
+        <div><input type="number" id="pb-acc-input" placeholder="ENTER 11-DIGIT ACC NO" oninput="loadPassbookData()" /></div>
+        <div><input type="text" id="pb-holder-info" readonly placeholder="HOLDER DETAILS & BALANCE" /></div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>DATE / TIME</th>
+              <th>TYPE</th>
+              <th>PARTICULARS / DESCRIPTION</th>
+              <th>AMOUNT</th>
+              <th>OPERATOR</th>
+            </tr>
+          </thead>
+          <tbody id="body-passbook-ledger">
+            <tr><td colspan="5" style="text-align:center;">ENTER AN ACCOUNT NUMBER TO VIEW PASSBOOK</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -234,14 +277,15 @@
     <div class="box">
       <div class="box-title"><span>IMMUTABLE JOURNAL</span><button class="outline" onclick="logout()" style="padding: 2px 8px;">[ SIGN OUT ]</button></div>
       <div class="table-container">
-        <table><thead><tr><th>SEQ</th><th>TIME</th><th>ACC NO</th><th>TYP</th><th>AMT / EVENT</th><th>OP & IP</th></tr></thead><tbody id="body-journal"></tbody></table>
+        <table><thead><tr><th>SEQ</th><th>TIME</th><th>ACC NO</th><th>TYP</th><th>AMT / PARTICULAR</th><th>OP & IP</th></tr></thead><tbody id="body-journal"></tbody></table>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-const DB_KEY = 'CRIS_BW_MASTER_FINAL_V23';
+// PERMANENT STATIC KEY: Ensures updates never lose track of old data
+const DB_KEY = 'CRIS_PRS_MASTER_DB_PERSISTENT';
 const SERIAL_BASE = 10000000000;
 let smsPermissionGranted = false;
 const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('cris_local_mesh') : null;
@@ -281,8 +325,43 @@ function showTaskFeedback(containerId, status, message) {
   box.innerHTML = `<div style="color:${color}; font-weight:bold;">[TASK STATUS: ${status}]</div><div style="font-size:0.75rem; margin-top:2px;">${message}</div>`;
 }
 
+// Helper: Show instant 3-dot loading state in feedback boxes
+function showLoadingFeedback(containerId) {
+  const box = document.getElementById(containerId);
+  if(!box) return;
+  box.style.display = 'block';
+  box.style.borderColor = '#ffff00';
+  box.innerHTML = `<div style="color:#ffff00; font-weight:bold;">PROCESSING<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>`;
+}
+
+// Automatic Legacy Migration: Pulls old data if found under older version keys
+function migrateLegacyData() {
+  const legacyKeys = ['CRIS_BW_MASTER_FINAL_V23', 'CRIS_BW_MASTER_FINAL_V22', 'CRIS_BW_MASTER_FINAL_V32', 'CRIS_BW_MASTER_FINAL_V31', 'CRIS_BW_MASTER_FINAL_V33'];
+  let existingData = localStorage.getItem(DB_KEY);
+  
+  if (!existingData) {
+    for (const key of legacyKeys) {
+      const oldData = localStorage.getItem(key);
+      if (oldData) {
+        localStorage.setItem(DB_KEY, oldData);
+        existingData = oldData;
+        break;
+      }
+    }
+  }
+  return existingData;
+}
+
 async function init(isSilent = false) { 
   const syncTag = document.getElementById('cloud-sync-status');
+  
+  // 1. Load from persistent local storage (with legacy migration support)
+  const local = migrateLegacyData();
+  if (local) {
+    try { db = JSON.parse(local); } catch(e) {}
+  }
+
+  // 2. Fetch latest state from cloud database
   try {
     if(syncTag) syncTag.innerText = 'DOWNLOADING...';
     const cloudRes = await fetch('/.netlify/functions/save-data', {
@@ -303,8 +382,6 @@ async function init(isSilent = false) {
       }
     }
   } catch(e) {
-    const local = localStorage.getItem(DB_KEY); 
-    if (local) { try { db = JSON.parse(local); if(!db.editRequests) db.editRequests = []; if(!db.users) db.users = []; if(!db.settings) db.settings = { onlineDebitOnly: false }; } catch(e) {} }
     if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
   }
   
@@ -350,7 +427,7 @@ function showPage(id) {
   document.querySelectorAll('.view-page').forEach(e=>e.style.display='none');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById(id).style.display='flex';
-  const map={'page-dash':0,'page-acc':1,'page-teller':2,'page-admin':3,'page-audit':4};
+  const map={'page-dash':0,'page-acc':1,'page-teller':2,'page-passbook':3,'page-admin':4,'page-audit':5};
   if(map[id]!==undefined) document.querySelectorAll('.nav-btn')[map[id]].classList.add('active');
   if(id==='page-admin') renderAdmin();
 }
@@ -363,39 +440,47 @@ function requestSmsBrowserPermission() {
 
 function handleLogon(e) {
   e.preventDefault(); 
-  const uid=document.getElementById('inp-uid').value.trim().toUpperCase(), pin=document.getElementById('inp-pin').value.trim();
-  let u = db.users.find(x=>x.id===uid && x.pin===pin);
-  if(!u && uid==='ADMIN' && pin==='9999') {
-    u={id:'ADMIN',pin:'9999',role:'ADMIN',status:'ACTIVE',lastIp: currentClientIP, phone:'0000000000'};
-    db.users.push(u);
-  }
-  if(!u){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Invalid credentials.'); return; }
-  if(u.status==='PENDING'){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Awaiting admin approval.'); return; }
-  if(u.status==='SUSPENDED'){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Account suspended.'); return; }
+  showLoadingFeedback('login-task-feedback');
+  
+  setTimeout(() => {
+    const uid=document.getElementById('inp-uid').value.trim().toUpperCase(), pin=document.getElementById('inp-pin').value.trim();
+    let u = db.users.find(x=>x.id===uid && x.pin===pin);
+    if(!u && uid==='ADMIN' && pin==='9999') {
+      u={id:'ADMIN',pin:'9999',role:'ADMIN',status:'ACTIVE',lastIp: currentClientIP, phone:'0000000000'};
+      db.users.push(u);
+    }
+    if(!u){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Invalid credentials.'); return; }
+    if(u.status==='PENDING'){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Awaiting admin approval.'); return; }
+    if(u.status==='SUSPENDED'){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Account suspended.'); return; }
 
-  u.lastIp = currentClientIP;
-  session=u; 
-  save();
+    u.lastIp = currentClientIP;
+    session=u; 
+    save();
 
-  showTaskFeedback('login-task-feedback', 'SUCCESS', `Logged in as ${u.id} [${u.role}]`);
-  document.getElementById('session-tag').innerText=`${u.id} [${u.role}]`;
-  document.getElementById('app-nav').style.display='flex';
-  document.getElementById('btn-admin').style.display=(u.role==='ADMIN')?'block':'none';
-  setTimeout(() => { showPage('page-dash'); syncUI(); }, 800);
+    showTaskFeedback('login-task-feedback', 'SUCCESS', `Logged in as ${u.id} [${u.role}]`);
+    document.getElementById('session-tag').innerText=`${u.id} [${u.role}]`;
+    document.getElementById('app-nav').style.display='flex';
+    document.getElementById('btn-admin').style.display=(u.role==='ADMIN')?'block':'none';
+    setTimeout(() => { showPage('page-dash'); syncUI(); }, 600);
+  }, 400);
 }
 
 function handleOnlineReg(e) {
   e.preventDefault();
-  const uid = document.getElementById('reg-uid').value.trim().toUpperCase();
-  const pin = document.getElementById('reg-pin').value.trim();
-  const phone = document.getElementById('reg-phone').value.trim().replace(/[^0-9]/g,'');
+  showLoadingFeedback('reg-task-feedback');
 
-  if(db.users.some(x => x.id === uid)) { showTaskFeedback('reg-task-feedback', 'DECLINED', 'ID already exists.'); return; }
+  setTimeout(() => {
+    const uid = document.getElementById('reg-uid').value.trim().toUpperCase();
+    const pin = document.getElementById('reg-pin').value.trim();
+    const phone = document.getElementById('reg-phone').value.trim().replace(/[^0-9]/g,'');
 
-  db.users.push({ id: uid, pin: pin, role: 'OPERATOR', status: 'PENDING', lastIp: currentClientIP, phone: phone });
-  save();
-  showTaskFeedback('reg-task-feedback', 'SUCCESS', 'Registration submitted. Pending Admin approval.');
-  setTimeout(() => { toggleAuth(); }, 1200);
+    if(db.users.some(x => x.id === uid)) { showTaskFeedback('reg-task-feedback', 'DECLINED', 'ID already exists.'); return; }
+
+    db.users.push({ id: uid, pin: pin, role: 'OPERATOR', status: 'PENDING', lastIp: currentClientIP, phone: phone });
+    save();
+    showTaskFeedback('reg-task-feedback', 'SUCCESS', 'Registration submitted. Pending Admin approval.');
+    setTimeout(() => { toggleAuth(); }, 1000);
+  }, 400);
 }
 
 function logout() { 
@@ -472,27 +557,31 @@ function toggleAccountOtpBox() {
 
 function manualAccount(e) {
   e.preventDefault(); 
-  const phone = document.getElementById('acc-phone').value.trim().replace(/[^0-9]/g,'');
-  const accNo = getSerial();
-  const isPending = session && session.status === 'PENDING';
-  
-  db.accounts.push({ 
-    accountNumber: accNo, 
-    holderName: document.getElementById('acc-name').value.trim().toUpperCase(), 
-    fatherName: document.getElementById('acc-father').value.trim().toUpperCase()||'N/A', 
-    phone: phone, 
-    email: document.getElementById('acc-email').value.trim().toUpperCase()||'N/A', 
-    address: document.getElementById('acc-address').value.trim().toUpperCase()||'N/A', 
-    balance: 0, 
-    status: isPending ? 'PENDING' : 'APPROVED',
-    smsOptIn: (document.getElementById('acc-sms').value==='ON') 
-  });
-  
-  db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_OPEN', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: 'NEW ACCOUNT OPENED' });
-  save(); 
+  showLoadingFeedback('acc-task-feedback');
 
-  showTaskFeedback('acc-task-feedback', 'SUCCESS', `Account ${accNo} created & synced.`);
-  e.target.reset();
+  setTimeout(() => {
+    const phone = document.getElementById('acc-phone').value.trim().replace(/[^0-9]/g,'');
+    const accNo = getSerial();
+    const isPending = session && session.status === 'PENDING';
+    
+    db.accounts.push({ 
+      accountNumber: accNo, 
+      holderName: document.getElementById('acc-name').value.trim().toUpperCase(), 
+      fatherName: document.getElementById('acc-father').value.trim().toUpperCase()||'N/A', 
+      phone: phone, 
+      email: document.getElementById('acc-email').value.trim().toUpperCase()||'N/A', 
+      address: document.getElementById('acc-address').value.trim().toUpperCase()||'N/A', 
+      balance: 0, 
+      status: isPending ? 'PENDING' : 'APPROVED',
+      smsOptIn: (document.getElementById('acc-sms').value==='ON') 
+    });
+    
+    db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_OPEN', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: 'NEW ACCOUNT OPENED' });
+    save(); 
+
+    showTaskFeedback('acc-task-feedback', 'SUCCESS', `Account ${accNo} created & synced.`);
+    e.target.reset();
+  }, 400);
 }
 
 let editingAccNo = null;
@@ -516,31 +605,35 @@ function closeEditAcc() { document.getElementById('box-edit-acc').style.display 
 function saveAccEdit(e) {
   e.preventDefault();
   if(!editingAccNo) return;
-  const updatedData = {
-    accountNumber: editingAccNo,
-    holderName: document.getElementById('edit-name').value.trim().toUpperCase(),
-    fatherName: document.getElementById('edit-father').value.trim().toUpperCase(),
-    phone: document.getElementById('edit-phone').value.trim().replace(/[^0-9]/g,''),
-    email: document.getElementById('edit-email').value.trim().toUpperCase(),
-    address: document.getElementById('edit-address').value.trim().toUpperCase(),
-    smsOptIn: (document.getElementById('edit-sms').value === 'ON')
-  };
+  showLoadingFeedback('edit-task-feedback');
 
-  if(session && session.role === 'ADMIN') {
-    const acc = db.accounts.find(a => a.accountNumber === editingAccNo);
-    if(acc) {
-      Object.assign(acc, updatedData);
-      db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: `${session.id} (ADMIN)`, narrative: 'ADMIN EDIT' });
+  setTimeout(() => {
+    const updatedData = {
+      accountNumber: editingAccNo,
+      holderName: document.getElementById('edit-name').value.trim().toUpperCase(),
+      fatherName: document.getElementById('edit-father').value.trim().toUpperCase(),
+      phone: document.getElementById('edit-phone').value.trim().replace(/[^0-9]/g,''),
+      email: document.getElementById('edit-email').value.trim().toUpperCase(),
+      address: document.getElementById('edit-address').value.trim().toUpperCase(),
+      smsOptIn: (document.getElementById('edit-sms').value === 'ON')
+    };
+
+    if(session && session.role === 'ADMIN') {
+      const acc = db.accounts.find(a => a.accountNumber === editingAccNo);
+      if(acc) {
+        Object.assign(acc, updatedData);
+        db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: `${session.id} (ADMIN)`, narrative: 'ADMIN EDIT' });
+        save();
+        showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Account updated.');
+      }
+    } else {
+      if(!db.editRequests) db.editRequests = [];
+      db.editRequests.push({ id: 'REQ_' + Date.now(), type: 'EDIT', accNo: editingAccNo, data: updatedData, operator: session.id });
       save();
-      showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Account updated.');
+      showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Edit request submitted.');
     }
-  } else {
-    if(!db.editRequests) db.editRequests = [];
-    db.editRequests.push({ id: 'REQ_' + Date.now(), type: 'EDIT', accNo: editingAccNo, data: updatedData, operator: session.id });
-    save();
-    showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Edit request submitted.');
-  }
-  setTimeout(() => { closeEditAcc(); syncUI(); }, 1200);
+    setTimeout(() => { closeEditAcc(); syncUI(); }, 1000);
+  }, 400);
 }
 
 function requestDeleteAccount(accNo) {
@@ -567,31 +660,69 @@ function autoFetch() {
 
 function processTx(e) {
   e.preventDefault(); 
-  const accNo=document.getElementById('tx-acc').value; 
-  const amt=parseFloat(document.getElementById('tx-amt').value); 
-  const type=document.getElementById('tx-type').value; 
-  const ref=document.getElementById('tx-ref').value.toUpperCase();
+  showLoadingFeedback('tx-task-feedback');
+
+  setTimeout(() => {
+    const accNo=document.getElementById('tx-acc').value; 
+    const amt=parseFloat(document.getElementById('tx-amt').value); 
+    const type=document.getElementById('tx-type').value; 
+    const ref=document.getElementById('tx-ref').value.toUpperCase();
+    
+    if (type === 'DR' && db.settings && db.settings.onlineDebitOnly && !navigator.onLine) {
+      showTaskFeedback('tx-task-feedback', 'DECLINED', 'DEBIT (DR) TRANSACTIONS ARE RESTRICTED TO ONLINE MODE ONLY.');
+      return;
+    }
+
+    const acc=db.accounts.find(a=>a.accountNumber===accNo); 
+    if(!acc){ showTaskFeedback('tx-task-feedback', 'DECLINED', 'Invalid account.'); return; }
+    if(type==='DR' && acc.balance<amt){ showTaskFeedback('tx-task-feedback', 'DECLINED', 'Insufficient balance.'); return; }
+
+    if(type==='CR') acc.balance+=amt; 
+    if(type==='DR') acc.balance-=amt;
+    
+    db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type, amount: amt, operator: `${session.id} (${currentClientIP})`, narrative: ref }); 
+    save(); 
+    autoFetch();
+
+    showTaskFeedback('tx-task-feedback', 'SUCCESS', `${type} of ${amt.toFixed(2)} posted. New Bal: ${acc.balance.toFixed(2)}`);
+    document.getElementById('tx-amt').value=''; 
+    document.getElementById('tx-ref').value='';
+  }, 400);
+}
+
+function loadPassbookData() {
+  const accNo = document.getElementById('pb-acc-input').value.trim();
+  const infoField = document.getElementById('pb-holder-info');
+  const tbody = document.getElementById('body-passbook-ledger');
   
-  // Check Admin Debit Toggle Rule
-  if (type === 'DR' && db.settings && db.settings.onlineDebitOnly && !navigator.onLine) {
-    showTaskFeedback('tx-task-feedback', 'DECLINED', 'DEBIT (DR) TRANSACTIONS ARE RESTRICTED TO ONLINE MODE ONLY.');
+  tbody.innerHTML = '';
+  
+  const acc = db.accounts.find(a => a.accountNumber === accNo);
+  if (!acc) {
+    infoField.value = 'ACCOUNT NOT FOUND';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO ACCOUNT MATCHED</td></tr>';
     return;
   }
-
-  const acc=db.accounts.find(a=>a.accountNumber===accNo); 
-  if(!acc){ showTaskFeedback('tx-task-feedback', 'DECLINED', 'Invalid account.'); return; }
-  if(type==='DR' && acc.balance<amt){ showTaskFeedback('tx-task-feedback', 'DECLINED', 'Insufficient balance.'); return; }
-
-  if(type==='CR') acc.balance+=amt; 
-  if(type==='DR') acc.balance-=amt;
   
-  db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type, amount: amt, operator: `${session.id} (${currentClientIP})`, narrative: ref }); 
-  save(); 
-  autoFetch();
-
-  showTaskFeedback('tx-task-feedback', 'SUCCESS', `${type} of ${amt.toFixed(2)} posted. New Bal: ${acc.balance.toFixed(2)}`);
-  document.getElementById('tx-amt').value=''; 
-  document.getElementById('tx-ref').value='';
+  infoField.value = `${acc.holderName} | BAL: ${acc.balance.toFixed(2)} | PH: ${acc.phone}`;
+  
+  const filteredLedger = db.ledger.filter(l => l.accNo === accNo);
+  if (!filteredLedger.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO TRANSACTION HISTORY FOR THIS A/C</td></tr>';
+    return;
+  }
+  
+  filteredLedger.forEach(l => {
+    const amtColor = l.type === 'CR' ? '#00ff00' : '#ffffff';
+    tbody.innerHTML += `
+      <tr>
+        <td>${l.timestamp}</td>
+        <td class="bold" style="color: ${amtColor};">${l.type}</td>
+        <td>${l.narrative || 'STANDARD TRANSACTION'}</td>
+        <td class="bold">${l.amount ? l.amount.toFixed(2) : '0.00'}</td>
+        <td class="dim">${l.operator}</td>
+      </tr>`;
+  });
 }
 
 function toggleDebitSetting() {
@@ -673,14 +804,9 @@ function useSearch(acc){ closeSearchModal(); showPage('page-teller'); document.g
 
 function viewAccountHistory(accNo) {
   closeSearchModal();
-  showPage('page-audit');
-  const tb = document.getElementById('body-journal');
-  tb.innerHTML = '';
-  const filtered = db.ledger.filter(l => l.accNo === accNo);
-  if(!filtered.length) { tb.innerHTML = `<tr><td colspan="6" style="text-align:center;">NO TRANSACTIONS</td></tr>`; return; }
-  filtered.forEach(l => {
-    tb.innerHTML += `<tr><td>${l.seq}</td><td>${l.timestamp}</td><td class="bold">${l.accNo}</td><td>${l.type}</td><td>${l.amount.toFixed(2)} (${l.narrative})</td><td class="dim">${l.operator}</td></tr>`;
-  });
+  showPage('page-passbook');
+  document.getElementById('pb-acc-input').value = accNo;
+  loadPassbookData();
 }
 
 function syncUI() {
