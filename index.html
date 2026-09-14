@@ -77,7 +77,7 @@
 <div class="prs-terminal">
 
   <div class="status-bar">
-    <div>SYS: [B&W-CORE-V19-DB]</div>
+    <div>SYS: [B&W-CORE-V21-DB]</div>
     <div>NET: <span id="net-status-tag" class="blink">CHECKING...</span></div>
     <div>USER: <span id="session-tag">DISCONNECTED</span></div>
     <div>IP: <span id="ip-tag">FETCHING...</span></div>
@@ -235,7 +235,7 @@
 </div>
 
 <script>
-const DB_KEY = 'CRIS_BW_MASTER_FINAL_V20';
+const DB_KEY = 'CRIS_BW_MASTER_FINAL_V21';
 const SERIAL_BASE = 10000000000;
 const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('cris_local_mesh') : null;
 if(syncChannel) { syncChannel.onmessage = (e) => { if(e.data === 'RELOAD_DB') init(true); }; }
@@ -264,9 +264,28 @@ let db = {
   editRequests: [] 
 };
 
-function init(isSilent = false) { 
-  const local = localStorage.getItem(DB_KEY); 
-  if (local) { try { db = JSON.parse(local); if(!db.editRequests) db.editRequests = []; if(!db.users) db.users = []; } catch(e) {} }
+async function init(isSilent = false) { 
+  // Fetch cloud state from CockroachDB via Netlify GET function
+  try {
+    const cloudRes = await fetch('/.netlify/functions/save-data', {
+      method: 'GET',
+      headers: { 'x-api-key': 'CRIS_SECURE_998877' }
+    });
+    if (cloudRes.ok) {
+      const cloudData = await cloudRes.json();
+      if (cloudData) {
+        db = cloudData;
+        if(!db.editRequests) db.editRequests = [];
+        if(!db.users) db.users = [];
+        if(!db.accounts) db.accounts = [];
+        if(!db.ledger) db.ledger = [];
+        localStorage.setItem(DB_KEY, JSON.stringify(db));
+      }
+    }
+  } catch(e) {
+    const local = localStorage.getItem(DB_KEY); 
+    if (local) { try { db = JSON.parse(local); if(!db.editRequests) db.editRequests = []; if(!db.users) db.users = []; } catch(e) {} }
+  }
   
   const savedSession = localStorage.getItem(DB_KEY + '_SESSION');
   if (savedSession && !session) {
@@ -648,7 +667,6 @@ function useSearch(acc){ closeSearchModal(); showPage('page-teller'); document.g
 function viewAccountHistory(accNo) {
   closeSearchModal();
   showPage('page-audit');
-  // Highlight or filter journal view for specific account number
   const tb = document.getElementById('body-journal');
   tb.innerHTML = '';
   const filtered = db.ledger.filter(l => l.accNo === accNo);
@@ -691,7 +709,7 @@ function syncUI() {
 }
 
 async function syncPendingDataToServer() {
-  const localData = localStorage.getItem(DB_KEY);
+  const localData = JSON.stringify(db);
   if (!localData) return;
   
   const syncTag = document.getElementById('cloud-sync-status');
