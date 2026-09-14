@@ -4,28 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
-  <title>CRIS-PRS // B&W MASTER TERMINAL - LIVE FEED</title>
+  <title>CRIS-PRS // B&W MASTER TERMINAL</title>
 
   <style>
     :root { --bg: #000000; --fg: #ffffff; --dim: #888888; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--fg); font-family: 'Courier New', Courier, monospace; min-height: 100vh; padding: 4px; display: flex; justify-content: center; text-transform: uppercase; overflow-x: hidden; }
-    .prs-terminal { width: 100%; max-width: 950px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 80px; }
+    body { background: var(--bg); color: var(--fg); font-family: 'Courier New', Courier, monospace; min-height: 100vh; padding: 8px; display: flex; justify-content: center; text-transform: uppercase; }
+    .prs-terminal { width: 100%; max-width: 950px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 60px; }
     .bold { font-weight: bold; } .dim { color: var(--dim); } .blink { animation: blinker 1s linear infinite; }
     @keyframes blinker { 50% { opacity: 0; } }
 
     #fixed-search-hud { position: fixed; top: 8px; right: 8px; z-index: 9999; background: var(--bg); border: 2px solid var(--fg); padding: 4px; }
     #fixed-search-hud button { border: none; font-size: 0.75rem; padding: 4px 8px; }
 
-    .box { border: 1px solid var(--fg); padding: 8px; word-break: break-word; }
-    .box-title { font-size: 0.85rem; border-bottom: 1px dashed var(--fg); padding-bottom: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; font-weight: bold; }
+    .box { border: 1px solid var(--fg); padding: 12px; }
+    .box-title { font-size: 0.85rem; border-bottom: 1px dashed var(--fg); padding-bottom: 4px; margin-bottom: 12px; display: flex; justify-content: space-between; font-weight: bold; }
     .status-bar { border: 2px solid var(--fg); padding: 6px 10px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 90px; }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-    .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
 
-    input, select, textarea { background: var(--bg); border: 1px solid var(--dim); color: var(--fg); font-family: inherit; padding: 10px; font-size: 16px; outline: none; width: 100%; text-transform: uppercase; }
+    input, select, textarea { background: var(--bg); border: 1px solid var(--dim); color: var(--fg); font-family: inherit; padding: 8px 10px; font-size: 0.8rem; outline: none; width: 100%; text-transform: uppercase; }
     input[readonly], textarea[readonly] { border-style: dashed; color: var(--dim); }
     input:focus, select:focus, textarea:focus { border-color: var(--fg); background: #111; }
 
@@ -33,11 +32,11 @@
     button:active { background: var(--fg); color: var(--bg); }
     button.inverted { background: var(--fg); color: var(--bg); }
 
-    .nav-bar { display: none; grid-template-columns: repeat(7, 1fr); gap: 4px; border-bottom: 2px solid var(--fg); padding-bottom: 8px; }
-    .nav-btn { background: var(--bg); color: var(--dim); border: 1px solid var(--dim); font-size: 0.6rem; }
+    .nav-bar { display: none; grid-template-columns: repeat(5, 1fr); gap: 4px; border-bottom: 2px solid var(--fg); padding-bottom: 8px; }
+    .nav-btn { background: var(--bg); color: var(--dim); border: 1px solid var(--dim); }
     .nav-btn.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 
-    .table-container { max-height: 280px; overflow-y: auto; overflow-x: auto; border: 1px solid var(--fg); -webkit-overflow-scrolling: touch; }
+    .table-container { max-height: 350px; overflow-y: auto; border: 1px solid var(--fg); }
     table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
     th { border-bottom: 1px solid var(--fg); text-align: left; padding: 6px; }
     td { border-bottom: 1px dashed var(--dim); padding: 6px; }
@@ -49,9 +48,9 @@
     .task-result-box { border: 2px solid var(--fg); background: #111; padding: 12px; margin-bottom: 10px; display: none; }
 
     @media (max-width: 650px) {
-      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
       .nav-bar { grid-template-columns: repeat(3, 1fr); }
-      #btn-admin, .nav-btn:nth-child(6), .nav-btn:nth-child(7) { grid-column: span 1.5; }
+      #btn-admin, .nav-btn:nth-child(5) { grid-column: span 1.5; }
       .status-bar { flex-direction: column; text-align: left; margin-right: 0; }
       #fixed-search-hud { position: static; margin-bottom: 8px; }
       #fixed-search-hud button { width: 100%; padding: 12px; font-size: 1rem; border: 1px dashed var(--fg); }
@@ -78,7 +77,7 @@
 <div class="prs-terminal">
 
   <div class="status-bar">
-    <div>SYS: [B&W-CORE-V33-LIVE-FEED]</div>
+    <div>SYS: [B&W-CORE-V22-FEED]</div>
     <div>NET: <span id="net-status-tag" class="blink">CHECKING...</span></div>
     <div>USER: <span id="session-tag">DISCONNECTED</span></div>
     <div>IP: <span id="ip-tag">FETCHING...</span></div>
@@ -87,28 +86,25 @@
 
   <div class="view-page" id="page-login" style="display: flex;">
     <div class="box" id="login-box">
-      <div class="box-title">EMPLOYEE / AGENT LOGON (DEFAULT: ADMIN / 9999)</div>
+      <div class="box-title">OPERATOR LOGON</div>
       <div id="login-task-feedback" class="task-result-box"></div>
       <form onsubmit="handleLogon(event)" style="display:flex; flex-direction:column; gap:8px;">
-        <div class="grid-2"><input type="text" id="inp-uid" placeholder="EMPLOYEE ID (E.G. ADMIN)" required /><input type="password" id="inp-pin" placeholder="PIN / PASSWORD" required /></div>
-        <div class="grid-2">
-          <button type="button" class="inverted" onclick="simulateBiometricLogin()">[ BIOMETRIC SCAN ]</button>
-          <button type="submit" class="inverted">[ AUTHORIZE LOGIN ]</button>
-        </div>
+        <div class="grid-2"><input type="text" id="inp-uid" placeholder="ID (E.G. ADMIN)" required /><input type="password" id="inp-pin" placeholder="PIN" required /></div>
+        <button type="submit" class="inverted">[ AUTHORIZE ]</button>
       </form>
       <div style="margin-top:10px; display:flex; justify-content:space-between; font-size:0.75rem;">
-        <span style="text-decoration:underline; cursor:pointer;" onclick="toggleAuth()">APPLY FOR AGENT ACCESS</span>
+        <span style="text-decoration:underline; cursor:pointer;" onclick="toggleAuth()">APPLY FOR OPERATOR ACCESS</span>
         <span style="text-decoration:underline; cursor:pointer;" onclick="openOnlineRegModal()">ONLINE REGISTRATION DESK</span>
       </div>
     </div>
 
     <div class="box" id="reg-box" style="display:none; border-style:dashed;">
-      <div class="box-title">FIELD EMPLOYEE REGISTRATION (ROUTED TO ADMIN)</div>
+      <div class="box-title">NEW OPERATOR REGISTRATION (ROUTED TO ADMIN)</div>
       <div id="reg-task-feedback" class="task-result-box"></div>
       <form onsubmit="handleOnlineReg(event)" style="display:flex; flex-direction:column; gap:8px;">
-        <div class="grid-2"><input type="text" id="reg-uid" placeholder="DESIRED EMPLOYEE ID" required /><input type="password" id="reg-pin" placeholder="CREATE PIN (MIN 4 CHARS)" required /></div>
+        <div class="grid-2"><input type="text" id="reg-uid" placeholder="DESIRED USER ID" required /><input type="password" id="reg-pin" placeholder="CREATE PIN" required /></div>
         <div class="grid-2">
-          <input type="tel" id="reg-phone" placeholder="MOBILE NO (10 DIGITS EXACT)" pattern="[0-9]{10}" maxlength="10" required />
+          <input type="tel" id="reg-phone" placeholder="MOBILE NO (FOR SMS/OTP)" required />
           <select id="reg-otp-mode"><option value="DIRECT">WITHOUT OTP</option><option value="OTP">WITH TXT MESSAGE APP OTP</option></select>
         </div>
         <button type="submit">[ SUBMIT REGISTRATION REQUEST ]</button>
@@ -120,48 +116,24 @@
   <nav class="nav-bar" id="app-nav">
     <button class="nav-btn active" onclick="showPage('page-dash')">1.DASH</button>
     <button class="nav-btn" onclick="showPage('page-acc')">2.ACCOUNTS</button>
-    <button class="nav-btn" onclick="showPage('page-fd')">3.FD DESK</button>
-    <button class="nav-btn" onclick="showPage('page-teller')">4.COLLECTION</button>
-    <button class="nav-btn" onclick="showPage('page-passbook')">5.PASSBOOK</button>
-    <button class="nav-btn" id="btn-admin" onclick="showPage('page-admin')">6.ADMIN</button>
-    <button class="nav-btn" onclick="showPage('page-audit')">7.AUDIT</button>
+    <button class="nav-btn" onclick="showPage('page-teller')">3.TELLER</button>
+    <button class="nav-btn" id="btn-admin" onclick="showPage('page-admin')">4.ADMIN</button>
+    <button class="nav-btn" onclick="showPage('page-audit')">5.AUDIT</button>
   </nav>
 
   <div class="view-page" id="page-dash">
     <div class="grid-3">
-      <div class="box"><div class="box-title">TOTAL COLLECTIONS (CR)</div><div class="stat-val" id="val-dep">0.00</div></div>
-      <div class="box"><div class="box-title">DISBURSEMENTS (DR)</div><div class="stat-val" id="val-with">0.00</div></div>
-      <div class="box"><div class="box-title">ACTIVE A/C & FDS</div><div class="stat-val" id="val-accs">0</div></div>
-    </div>
-    
-    <div class="box">
-      <div class="box-title">SECURITY CREDENTIAL MODIFICATION DESK</div>
-      <div id="pwd-task-feedback" class="task-result-box"></div>
-      <form onsubmit="handlePasswordChange(event)" style="display:flex; flex-direction:column; gap:8px;">
-        <div class="grid-3">
-          <input type="password" id="pwd-current" placeholder="CURRENT PIN" required />
-          <input type="password" id="pwd-new" placeholder="NEW PIN (MIN 4 CHARS)" required />
-          <button type="submit" class="inverted">[ UPDATE CREDENTIALS ]</button>
-        </div>
-      </form>
-    </div>
-
-    <div class="box">
-      <div class="box-title">FIELD AGENT PERFORMANCE TARGETS</div>
-      <div class="grid-3">
-        <div><span class="dim">ACCOUNTS OPENED:</span> <span id="perf-accs" class="bold">0</span></div>
-        <div><span class="dim">FD BOOKINGS:</span> <span id="perf-fds" class="bold">0</span></div>
-        <div><span class="dim">CASH COLLECTED TODAY:</span> <span id="perf-cash" class="bold">0.00</span></div>
-      </div>
+      <div class="box"><div class="box-title">DEPOSITS (CR)</div><div class="stat-val" id="val-dep">0.00</div></div>
+      <div class="box"><div class="box-title">WITHDRAWALS (DR)</div><div class="stat-val" id="val-with">0.00</div></div>
+      <div class="box"><div class="box-title">ACTIVE A/C</div><div class="stat-val" id="val-accs">0</div></div>
     </div>
   </div>
 
   <div class="view-page" id="page-acc">
     <div class="box" style="border: 2px dashed var(--fg);">
-      <div class="box-title">CUSTOMER ONBOARDING & OCR KYC ENGINE</div>
-      <p class="dim" style="font-size:0.7rem; margin-bottom:10px;">1. SCAN IDENTITY DOCUMENTS (OCR AUTO-FILL SIMULATION).<br>2. SELECT CONTACTS DIRECTLY OR UPLOAD .VCF FILE.</p>
-      <div class="grid-3">
-        <button class="inverted" onclick="simulateOCRScan()">[ SCAN ID / OCR FILL ]</button>
+      <div class="box-title">HYBRID CONTACT IMPORT & PULLING ENGINE</div>
+      <p class="dim" style="font-size:0.7rem; margin-bottom:10px;">1. SELECT SPECIFIC CONTACTS DIRECTLY FROM DEVICE.<br>2. BULK IMPORT ENTIRE ADDRESS BOOK VIA .VCF FILE.</p>
+      <div class="grid-2">
         <button class="inverted" onclick="importMultipleContacts()">[ CHOOSE CONTACTS ]</button>
         <button class="inverted" onclick="document.getElementById('vcf-upload').click()">[ IMPORT .VCF ]</button>
       </div>
@@ -169,26 +141,22 @@
     </div>
 
     <div class="box">
-      <div class="box-title"><span>CUSTOMER ONBOARDING & ACCOUNT OPENING</span><button class="inverted" onclick="requestSmsBrowserPermission()" style="font-size:0.65rem; padding:2px 6px;">[SMS PERMISSION: <span id="sms-perm-status">OFF</span>]</button></div>
+      <div class="box-title"><span>MANUAL ACCOUNT REGISTRATION</span><button class="inverted" onclick="requestSmsBrowserPermission()" style="font-size:0.65rem; padding:2px 6px;">[SMS PERMISSION: <span id="sms-perm-status">OFF</span>]</button></div>
       <div id="acc-task-feedback" class="task-result-box"></div>
       <form onsubmit="manualAccount(event)" style="display:flex; flex-direction:column; gap:8px;">
         <div class="grid-3">
-          <input type="text" id="acc-name" placeholder="CUSTOMER FULL NAME" required />
-          <input type="text" id="acc-father" placeholder="FATHER'S / SPOUSE NAME" />
-          <input type="tel" id="acc-phone" placeholder="MOBILE NO (10 DIGITS)" pattern="[0-9]{10}" maxlength="10" required />
+          <input type="text" id="acc-name" placeholder="HOLDER NAME" required />
+          <input type="text" id="acc-father" placeholder="FATHER'S NAME" />
+          <input type="tel" id="acc-phone" placeholder="MOBILE NO" required />
         </div>
-        <div class="grid-4">
+        <div class="grid-3">
           <input type="text" id="acc-email" placeholder="EMAIL (OPTIONAL)" />
-          <select id="acc-type"><option value="SAVINGS" selected>SAVINGS A/C</option><option value="CURRENT">CURRENT A/C</option><option value="SALARY">SALARY A/C</option><option value="MINOR">MINOR A/C</option></select>
-          <select id="acc-sms"><option value="OFF" selected>SMS ALERTS: OFF</option><option value="ON">SMS ALERTS: ON</option></select>
-          <select id="acc-auth-mode" onchange="toggleAccountOtpBox()"><option value="DIRECT">OPEN WITHOUT OTP</option><option value="OTP">VERIFY VIA APP OTP</option></select>
+          <select id="acc-sms"><option value="OFF" selected>SMS ALERTS: OFF (TOGGLE)</option><option value="ON">SMS ALERTS: ON</option></select>
+          <select id="acc-auth-mode" onchange="toggleAccountOtpBox()"><option value="DIRECT">CREATE WITHOUT OTP</option><option value="OTP">VERIFY VIA TXT MESSAGE APP OTP</option></select>
         </div>
-        <div class="grid-2">
-          <textarea id="acc-address" placeholder="RESIDENTIAL ADDRESS" rows="1"></textarea>
-          <input type="text" id="acc-nominee" placeholder="NOMINEE DETAILS (NAME / RELATION)" />
-        </div>
+        <textarea id="acc-address" placeholder="PHYSICAL ADDRESS" rows="1"></textarea>
         <div id="acc-otp-box" style="display:none;"><input type="text" id="acc-otp-input" placeholder="ENTER OTP SENT VIA TXT MESSAGE APP" /></div>
-        <button type="submit" class="inverted">[ SUBMIT ACCOUNT APPLICATION ]</button>
+        <button type="submit" class="inverted">[ GENERATE A/C / QUEUE REQUEST ]</button>
       </form>
     </div>
 
@@ -198,47 +166,18 @@
       <form onsubmit="saveAccEdit(event)" style="display:flex; flex-direction:column; gap:8px;">
         <div class="grid-2"><input type="text" id="edit-accno" readonly /><input type="text" id="edit-bal" readonly /></div>
         <div class="grid-2"><input type="text" id="edit-name" required /><input type="text" id="edit-father" required /></div>
-        <div class="grid-2"><input type="tel" id="edit-phone" pattern="[0-9]{10}" maxlength="10" required /><input type="text" id="edit-email" placeholder="EMAIL (OPTIONAL)" /></div>
+        <div class="grid-2"><input type="tel" id="edit-phone" required /><input type="text" id="edit-email" /></div>
         <div class="grid-2"><textarea id="edit-address" rows="2"></textarea><select id="edit-sms"><option value="ON">SMS: ON</option><option value="OFF">SMS: OFF</option></select></div>
         <button type="submit" class="inverted">[ SUBMIT EDIT FOR ADMIN APPROVAL ]</button>
       </form>
     </div>
 
     <div class="box">
-      <div class="box-title">CUSTOMER DIRECTORY & KYC STATUS</div>
+      <div class="box-title">RECORD DIRECTORY (PENDING / APPROVED)</div>
       <div class="table-container">
         <table>
-          <thead><tr><th>ACC NO</th><th>HOLDER & TYPE</th><th>CONTACT & NOMINEE</th><th>BAL</th><th>ACTIONS</th></tr></thead>
+          <thead><tr><th>11-DIGIT ACC</th><th>HOLDER & DETAILS</th><th>CONTACT & SMS</th><th>BAL</th><th>ACTIONS</th></tr></thead>
           <tbody id="body-accs"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <div class="view-page" id="page-fd">
-    <div class="box">
-      <div class="box-title">FIXED DEPOSIT (FD) BOOKING DESK</div>
-      <div id="fd-task-feedback" class="task-result-box"></div>
-      <form onsubmit="bookFixedDeposit(event)" style="display:flex; flex-direction:column; gap:8px;">
-        <div class="grid-3">
-          <input type="number" id="fd-accno" placeholder="LINKED 11-DIGIT ACC NO" required />
-          <input type="number" step="any" id="fd-amount" placeholder="FD PRINCIPAL AMOUNT" required oninput="calculateFDReturns()" />
-          <input type="number" id="fd-tenure" placeholder="TENURE (MONTHS)" required oninput="calculateFDReturns()" />
-        </div>
-        <div class="grid-3">
-          <select id="fd-payout"><option value="CUMULATIVE" selected>CUMULATIVE (AT MATURITY)</option><option value="QUARTERLY">QUARTERLY PAYOUT</option><option value="MONTHLY">MONTHLY PAYOUT</option></select>
-          <input type="text" id="fd-calc-display" readonly value="EST. MATURITY: 0.00" style="background:#111; font-weight:bold;" />
-          <button type="submit" class="inverted">[ BOOK FIXED DEPOSIT ]</button>
-        </div>
-      </form>
-    </div>
-
-    <div class="box">
-      <div class="box-title">ACTIVE FIXED DEPOSITS PORTFOLIO</div>
-      <div class="table-container">
-        <table>
-          <thead><tr><th>FD ID</th><th>LINKED ACC</th><th>PRINCIPAL</th><th>TENURE</th><th>MATURITY VAL</th><th>STATUS</th></tr></thead>
-          <tbody id="body-fds"></tbody>
         </table>
       </div>
     </div>
@@ -246,56 +185,26 @@
 
   <div class="view-page" id="page-teller">
     <div class="box">
-      <div class="box-title">FIELD CASH / MONEY COLLECTION DESK</div>
+      <div class="box-title">TRANSACTION CLEARING DESK</div>
       <div id="tx-task-feedback" class="task-result-box"></div>
       <form onsubmit="processTx(event)" style="display:flex; flex-direction:column; gap:8px;">
         <div class="grid-2">
           <div><label class="dim">ACC NO:</label><input type="number" id="tx-acc" oninput="autoFetch()" required /></div>
-          <div><label class="dim">CUSTOMER DATA:</label><input type="text" id="tx-fetch" readonly /></div>
+          <div><label class="dim">DATA:</label><input type="text" id="tx-fetch" readonly /></div>
         </div>
         <div class="grid-3">
-          <input type="number" step="any" id="tx-amt" placeholder="COLLECTION AMOUNT" required />
-          <select id="tx-purpose"><option value="DEPOSIT" selected>SAVINGS DEPOSIT</option><option value="FD_FUND">FD FUNDING</option><option value="LOAN_EMI">LOAN EMI COLLECTION</option><option value="CURRENT_COLL">CURRENT ACCOUNT COLL</option></select>
-          <select id="tx-type"><option value="CR" selected>CASH COLLECTION (CR)</option><option value="DR">CASH WITHDRAWAL/PAYOUT (DR)</option></select>
+          <input type="number" step="any" id="tx-amt" placeholder="AMOUNT" required />
+          <select id="tx-type"><option value="CR">CREDIT</option><option value="DR">DEBIT</option></select>
+          <input type="text" id="tx-ref" placeholder="PARTICULARS" required />
         </div>
-        <input type="text" id="tx-ref" placeholder="PARTICULARS / RECEIPT NOTE" required />
-        <button type="submit" class="inverted">[ COLLECT & ISSUE DIGITAL RECEIPT ]</button>
+        <button type="submit" class="inverted">[ PROCESS TRANSACTION ]</button>
       </form>
-    </div>
-  </div>
-
-  <div class="view-page" id="page-passbook">
-    <div class="box">
-      <div class="box-title">
-        <span>DIGITAL PASSBOOK & STATEMENT DESK</span>
-        <button class="inverted" onclick="generatePassbookPDF()" style="padding: 2px 8px; font-size: 0.7rem;">[ EXPORT PDF ]</button>
-      </div>
-      <div class="grid-2" style="margin-bottom: 10px;">
-        <div><input type="number" id="pb-acc-input" placeholder="ENTER 11-DIGIT ACC NO" oninput="loadPassbookData()" /></div>
-        <div><input type="text" id="pb-holder-info" readonly placeholder="HOLDER DETAILS & BALANCE" /></div>
-      </div>
-      <div class="table-container" id="passbook-print-area">
-        <table>
-          <thead>
-            <tr>
-              <th>DATE / TIME</th>
-              <th>TXN TYPE</th>
-              <th>PARTICULARS</th>
-              <th>AMOUNT</th>
-              <th>OPERATOR</th>
-            </tr>
-          </thead>
-          <tbody id="body-passbook-ledger">
-            <tr><td colspan="5" style="text-align:center;">ENTER AN ACCOUNT NUMBER TO VIEW PASSBOOK</td></tr>
-          </tbody>
-        </table>
-      </div>
     </div>
   </div>
 
   <div class="view-page" id="page-admin">
     <div class="box" style="margin-bottom:12px;">
-      <div class="box-title">PENDING EMPLOYEE REGISTRATIONS</div>
+      <div class="box-title">PENDING OPERATOR REGISTRATIONS</div>
       <div class="table-container">
         <table><thead><tr><th>USER ID</th><th>PHONE</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody id="body-pending-users"></tbody></table>
       </div>
@@ -309,23 +218,23 @@
     <div class="box">
       <div class="box-title">ACTIVE PERSONNEL & ACCESS CONTROL</div>
       <div class="table-container">
-        <table><thead><tr><th>EMPLOYEE ID</th><th>ROLE</th><th>STATUS</th><th>LAST IP</th><th>ACTIONS</th></tr></thead><tbody id="body-users"></tbody></table>
+        <table><thead><tr><th>USER ID</th><th>ROLE</th><th>STATUS</th><th>LAST IP</th><th>ACTIONS</th></tr></thead><tbody id="body-users"></tbody></table>
       </div>
     </div>
   </div>
 
   <div class="view-page" id="page-audit">
     <div class="box">
-      <div class="box-title"><span>IMMUTABLE AUDIT JOURNAL</span><button class="outline" onclick="logout()" style="padding: 2px 8px;">[ SIGN OUT ]</button></div>
+      <div class="box-title"><span>IMMUTABLE JOURNAL</span><button class="outline" onclick="logout()" style="padding: 2px 8px;">[ SIGN OUT ]</button></div>
       <div class="table-container">
-        <table><thead><tr><th>SEQ</th><th>TIME</th><th>ACC NO</th><th>TYP</th><th>AMT / EVENT</th><th>AGENT / IP</th></tr></thead><tbody id="body-journal"></tbody></table>
+        <table><thead><tr><th>SEQ</th><th>TIME</th><th>ACC NO</th><th>TYP</th><th>AMT / EVENT</th><th>OP & IP</th></tr></thead><tbody id="body-journal"></tbody></table>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-const DB_KEY = 'CRIS_BW_MASTER_FINAL_V33';
+const DB_KEY = 'CRIS_BW_MASTER_FINAL_V22';
 const SERIAL_BASE = 10000000000;
 let smsPermissionGranted = false;
 const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('cris_local_mesh') : null;
@@ -351,16 +260,9 @@ async function fetchClientIP() {
 let db = { 
   users: [{ id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', lastIp: 'N/A', phone: '0000000000' }], 
   accounts: [], 
-  fds: [],
   ledger: [], 
   editRequests: [] 
 };
-
-function isValidEmail(email) {
-  if (!email || email.trim() === '' || email === 'N/A' || email === 'NO_EMAIL') return true;
-  const regex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-  return regex.test(email.trim());
-}
 
 function showTaskFeedback(containerId, status, message) {
   const box = document.getElementById(containerId);
@@ -368,10 +270,9 @@ function showTaskFeedback(containerId, status, message) {
   const color = status === 'SUCCESS' ? '#00ff00' : status === 'DECLINED' ? '#ff4444' : '#ffff00';
   box.style.display = 'block';
   box.style.borderColor = color;
-  box.innerHTML = `<div style="color:${color}; font-weight:bold;">[STATUS: ${status}]</div><div style="font-size:0.75rem; margin-top:2px;">${message}</div>`;
+  box.innerHTML = `<div style="color:${color}; font-weight:bold;">[TASK STATUS: ${status}]</div><div style="font-size:0.75rem; margin-top:2px;">${message}</div>`;
 }
 
-// Initial fetch from cloud database on startup
 async function init(isSilent = false) { 
   const syncTag = document.getElementById('cloud-sync-status');
   try {
@@ -382,12 +283,11 @@ async function init(isSilent = false) {
     });
     if (cloudRes.ok) {
       const cloudData = await cloudRes.json();
-      if (cloudData && cloudData.users) {
+      if (cloudData) {
         db = cloudData;
         if(!db.editRequests) db.editRequests = [];
         if(!db.users) db.users = [];
         if(!db.accounts) db.accounts = [];
-        if(!db.fds) db.fds = [];
         if(!db.ledger) db.ledger = [];
         localStorage.setItem(DB_KEY, JSON.stringify(db));
         if(syncTag) syncTag.innerText = 'SYNCED [LIVE]';
@@ -395,15 +295,8 @@ async function init(isSilent = false) {
     }
   } catch(e) {
     const local = localStorage.getItem(DB_KEY); 
-    if (local) { try { db = JSON.parse(local); } catch(e) {} }
+    if (local) { try { db = JSON.parse(local); if(!db.editRequests) db.editRequests = []; if(!db.users) db.users = []; } catch(e) {} }
     if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
-  }
-
-  let adminUser = db.users.find(x => x.id === 'ADMIN');
-  if(!adminUser) {
-    db.users.push({ id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', lastIp: 'N/A', phone: '0000000000' });
-  } else if(!adminUser.pin) {
-    adminUser.pin = '9999';
   }
   
   const savedSession = localStorage.getItem(DB_KEY + '_SESSION');
@@ -433,7 +326,7 @@ function saveLocally() {
   localStorage.setItem(DB_KEY, JSON.stringify(db)); 
   if(session) localStorage.setItem(DB_KEY + '_SESSION', JSON.stringify(session));
   if(syncChannel) syncChannel.postMessage('RELOAD_DB');
-  if(session) syncUI();
+  if (session) syncUI(); 
 }
 
 function toggleAuth() {
@@ -447,16 +340,23 @@ function showPage(id) {
   document.querySelectorAll('.view-page').forEach(e=>e.style.display='none');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById(id).style.display='flex';
-  const map={'page-dash':0,'page-acc':1,'page-fd':2,'page-teller':3,'page-passbook':4,'page-admin':5,'page-audit':6};
+  const map={'page-dash':0,'page-acc':1,'page-teller':2,'page-admin':3,'page-audit':4};
   if(map[id]!==undefined) document.querySelectorAll('.nav-btn')[map[id]].classList.add('active');
   if(id==='page-admin') renderAdmin();
-  if(id==='page-dash') updatePerformanceMetrics();
 }
 
 function requestSmsBrowserPermission() {
-  smsPermissionGranted = true;
-  document.getElementById('sms-perm-status').innerText = 'ON';
-  alert('SMS & WHATSAPP NOTIFICATION ENGINE ACTIVATED.');
+  if('Notification' in window) {
+    Notification.requestPermission().then(permission => {
+      smsPermissionGranted = (permission === 'granted');
+      document.getElementById('sms-perm-status').innerText = smsPermissionGranted ? 'ON' : 'OFF';
+      alert(smsPermissionGranted ? 'BROWSER SMS/NOTIFICATION PERMISSION GRANTED.' : 'PERMISSION DECLINED.');
+    });
+  } else {
+    smsPermissionGranted = true;
+    document.getElementById('sms-perm-status').innerText = 'ON';
+    alert('SMS PERMISSION SIMULATED & ENABLED.');
+  }
 }
 
 function handleLogon(e) {
@@ -467,33 +367,27 @@ function handleLogon(e) {
     u={id:'ADMIN',pin:'9999',role:'ADMIN',status:'ACTIVE',lastIp: currentClientIP, phone:'0000000000'};
     db.users.push(u);
   }
-  if(!u){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Invalid credentials entered.'); return; }
-  if(u.status==='PENDING'){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Awaiting admin approval.'); return; }
-  if(u.status==='SUSPENDED'){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Account suspended.'); return; }
+  if(!u){ 
+    showTaskFeedback('login-task-feedback', 'DECLINED', 'Invalid credentials entered. Logon rejected.');
+    return; 
+  }
+  if(u.status==='PENDING'){ 
+    showTaskFeedback('login-task-feedback', 'DECLINED', 'Awaiting admin approval. Access restricted.');
+    return; 
+  }
+  if(u.status==='SUSPENDED'){ 
+    showTaskFeedback('login-task-feedback', 'DECLINED', 'Account suspended by administrator.');
+    return; 
+  }
 
   u.lastIp = currentClientIP;
   session=u; 
   saveLocally();
 
-  showTaskFeedback('login-task-feedback', 'SUCCESS', `Logged in as ${u.id} [${u.role}]`);
+  showTaskFeedback('login-task-feedback', 'SUCCESS', `Logon successful as ${u.id} [${u.role}]`);
   document.getElementById('session-tag').innerText=`${u.id} [${u.role}]`;
   document.getElementById('app-nav').style.display='flex';
   document.getElementById('btn-admin').style.display=(u.role==='ADMIN')?'block':'none';
-  setTimeout(() => { showPage('page-dash'); syncUI(); }, 800);
-}
-
-function simulateBiometricLogin() {
-  let u = db.users.find(x => x.id === 'ADMIN');
-  if(!u) {
-    u = { id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', lastIp: currentClientIP, phone: '0000000000' };
-    db.users.push(u);
-  }
-  session = u;
-  saveLocally();
-  showTaskFeedback('login-task-feedback', 'SUCCESS', 'Biometric Fingerprint Match Verified. Authenticated as ADMIN.');
-  document.getElementById('session-tag').innerText = `${u.id} [${u.role}]`;
-  document.getElementById('app-nav').style.display = 'flex';
-  document.getElementById('btn-admin').style.display = 'block';
   setTimeout(() => { showPage('page-dash'); syncUI(); }, 800);
 }
 
@@ -504,30 +398,24 @@ function handleOnlineReg(e) {
   const phone = document.getElementById('reg-phone').value.trim().replace(/[^0-9]/g,'');
   const mode = document.getElementById('reg-otp-mode').value;
 
-  if (phone.length !== 10) { showTaskFeedback('reg-task-feedback', 'DECLINED', 'Mobile number must be exactly 10 digits.'); return; }
-  if (pin.length < 4) { showTaskFeedback('reg-task-feedback', 'DECLINED', 'Password / PIN must be at least 4 characters long.'); return; }
-  if(db.users.some(x => x.id === uid)) { showTaskFeedback('reg-task-feedback', 'DECLINED', 'Employee ID already taken.'); return; }
+  if(db.users.some(x => x.id === uid)) { 
+    showTaskFeedback('reg-task-feedback', 'DECLINED', 'User ID already exists. Registration declined.');
+    return; 
+  }
 
-  db.users.push({ id: uid, pin: pin, role: 'FIELD_AGENT', status: 'PENDING', lastIp: currentClientIP, phone: phone });
+  if(mode === 'OTP') {
+    const generatedOtp = Math.floor(1000 + Math.random() * 9000);
+    const entered = prompt(`[TXT MESSAGE APP SIMULATION]\nOTP: ${generatedOtp}\nEnter OTP received:`);
+    if(entered !== generatedOtp.toString()) { 
+      showTaskFeedback('reg-task-feedback', 'DECLINED', 'Incorrect OTP entered. Registration declined.');
+      return; 
+    }
+  }
+
+  db.users.push({ id: uid, pin: pin, role: 'OPERATOR', status: 'PENDING', lastIp: currentClientIP, phone: phone });
   saveLocally();
-  showTaskFeedback('reg-task-feedback', 'SUCCESS', 'Registration submitted. Pending Admin approval.');
+  showTaskFeedback('reg-task-feedback', 'SUCCESS', 'Registration request submitted successfully. Final approval pending from Admin.');
   setTimeout(() => { toggleAuth(); }, 1200);
-}
-
-function handlePasswordChange(e) {
-  e.preventDefault();
-  if(!session) return;
-  const currentPin = document.getElementById('pwd-current').value.trim();
-  const newPin = document.getElementById('pwd-new').value.trim();
-
-  const userRecord = db.users.find(x => x.id === session.id);
-  if(!userRecord || userRecord.pin !== currentPin) { showTaskFeedback('pwd-task-feedback', 'DECLINED', 'Current PIN is incorrect.'); return; }
-  if(newPin.length < 4) { showTaskFeedback('pwd-task-feedback', 'DECLINED', 'New PIN must be at least 4 characters long.'); return; }
-
-  userRecord.pin = newPin;
-  saveLocally();
-  showTaskFeedback('pwd-task-feedback', 'SUCCESS', 'Security credentials updated successfully.');
-  e.target.reset();
 }
 
 function logout() { 
@@ -544,33 +432,31 @@ function getSerial() {
   return (max+1).toString();
 }
 
-function simulateOCRScan() {
-  document.getElementById('acc-name').value = 'RAMESH KUMAR';
-  document.getElementById('acc-father').value = 'SHIV KUMAR';
-  document.getElementById('acc-phone').value = '9876543210';
-  document.getElementById('acc-email').value = 'RAMESH@GMAIL.COM';
-  document.getElementById('acc-address').value = 'VILLAGE POST PATNA BIHAR';
-  document.getElementById('acc-nominee').value = 'SUNITA DEVI (WIFE)';
-  alert('[OCR SCAN SIMULATION]\nIdentity document scanned and auto-filled successfully.');
-}
-
 async function importMultipleContacts() {
-  if (!('contacts' in navigator && 'ContactsManager' in window)) { alert('Device Contacts API not supported. Use .VCF import.'); return; }
+  if (!('contacts' in navigator && 'ContactsManager' in window)) { 
+    alert('DEVICE CONTACT API NOT SUPPORTED. USE .VCF IMPORT INSTEAD.'); 
+    return; 
+  }
   try {
     const contacts = await navigator.contacts.select(['name','tel','email','address'], { multiple:true });
     if(!contacts || !contacts.length) return; 
     let added = 0;
     contacts.forEach(c => {
       const name = (c.name && c.name.length) ? c.name[0].toUpperCase() : 'UNKNOWN'; 
-      let phone = (c.tel && c.tel.length) ? c.tel[0].replace(/[^0-9]/g,'') : '';
-      if(phone.length > 10) phone = phone.slice(-10);
-      if(phone.length === 10 && !db.accounts.some(acc => acc.phone === phone)) {
-        db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'IMPORTED', phone: phone, email: 'N/A', address: 'N/A', nominee: 'N/A', type: 'SAVINGS', balance: 0, status: 'APPROVED', smsOptIn: false }); 
+      const phone = (c.tel && c.tel.length) ? c.tel[0].replace(/[^0-9]/g,'') : 'NO_PHONE';
+      const email = (c.email && c.email.length) ? c.email[0].toUpperCase() : 'NO_EMAIL'; 
+      let addStr = 'NO_ADDRESS';
+      if(c.address && c.address.length){ 
+        const a = c.address[0]; 
+        addStr = [a.street, a.city, a.region, a.postalCode, a.country].filter(Boolean).join(', ').toUpperCase(); 
+      }
+      if(!db.accounts.some(acc => acc.phone === phone)) {
+        db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'IMPORTED', phone: phone, email: email, address: addStr, balance: 0, status: 'APPROVED', smsOptIn: false }); 
         added++;
       }
     });
     saveLocally(); 
-    alert(`SUCCESS: Imported ${added} customers from contacts.`);
+    alert(`SUCCESS: IMPORTED ${added} RECORDS DIRECTLY FROM DEVICE CONTACTS.`);
   } catch(err) { console.error(err); }
 }
 
@@ -588,16 +474,15 @@ function processVCF(e) {
       const phoneMatch = card.match(/TEL.*:(.*)/i);
       if (nameMatch && phoneMatch) {
         const name = nameMatch[1].trim().toUpperCase(); 
-        let phone = phoneMatch[1].replace(/[^0-9]/g, '');
-        if(phone.length > 10) phone = phone.slice(-10);
-        if (phone.length === 10 && !db.accounts.some(a => a.phone === phone)) {
-          db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'VCF_IMPORT', phone: phone, email: 'N/A', address: 'N/A', nominee: 'N/A', type: 'SAVINGS', balance: 0, status: 'APPROVED', smsOptIn: false }); 
+        const phone = phoneMatch[1].replace(/[^0-9]/g, '');
+        if (phone.length >= 7 && !db.accounts.some(a => a.phone === phone)) {
+          db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'VCF_IMPORT', phone: phone, email: 'N/A', address: 'N/A', balance: 0, status: 'APPROVED', smsOptIn: false }); 
           added++;
         }
       }
     });
     saveLocally(); 
-    alert(`VCF Imported ${added} accounts.`); 
+    alert(`VCF EXTRACTION COMPLETE.\n${added} NEW ACCOUNTS IMPORTED.`); 
     fileInput.value = '';
   };
   reader.readAsText(fileInput.files[0]);
@@ -608,14 +493,20 @@ function toggleAccountOtpBox() {
   document.getElementById('acc-otp-box').style.display = (mode === 'OTP') ? 'block' : 'none';
 }
 
-// LIVE FEED: Send ONLY the new account row/item to cloud server
+// LIVE FEED: Send ONLY the newly created account row/item to the cloud server immediately
 async function manualAccount(e) {
   e.preventDefault(); 
   const phone = document.getElementById('acc-phone').value.trim().replace(/[^0-9]/g,'');
-  const emailInput = document.getElementById('acc-email').value.trim();
+  const mode = document.getElementById('acc-auth-mode').value;
 
-  if (phone.length !== 10) { showTaskFeedback('acc-task-feedback', 'DECLINED', 'Mobile number must be exactly 10 digits.'); return; }
-  if (emailInput !== '' && !isValidEmail(emailInput)) { showTaskFeedback('acc-task-feedback', 'DECLINED', 'Invalid email format.'); return; }
+  if(mode === 'OTP') {
+    const otp = Math.floor(1000 + Math.random() * 9000);
+    const entered = prompt(`[TXT MESSAGE APP SIMULATION]\nAccount OTP: ${otp}\nEnter verification code:`);
+    if(entered !== otp.toString()) { 
+      showTaskFeedback('acc-task-feedback', 'DECLINED', 'Invalid OTP entered. Account creation declined.');
+      return; 
+    }
+  }
 
   const accNo = getSerial();
   const isPending = session && session.status === 'PENDING';
@@ -625,17 +516,15 @@ async function manualAccount(e) {
     holderName: document.getElementById('acc-name').value.trim().toUpperCase(), 
     fatherName: document.getElementById('acc-father').value.trim().toUpperCase()||'N/A', 
     phone: phone, 
-    email: emailInput !== '' ? emailInput.toUpperCase() : 'N/A', 
+    email: document.getElementById('acc-email').value.trim().toUpperCase()||'N/A', 
     address: document.getElementById('acc-address').value.trim().toUpperCase()||'N/A', 
-    nominee: document.getElementById('acc-nominee').value.trim().toUpperCase()||'N/A',
-    type: document.getElementById('acc-type').value,
     balance: 0, 
     status: isPending ? 'PENDING' : 'APPROVED',
     smsOptIn: (document.getElementById('acc-sms').value==='ON') 
   };
 
   db.accounts.push(newAccountObj);
-  db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_OPEN', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: 'ACCOUNT OPENED' });
+  db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_OPEN', amount: 0, operator: `${session.id} (${currentClientIP})`, narrative: isPending ? 'ACCOUNT CREATED (PENDING APPROVAL)' : 'NEW ACCOUNT OPENED' });
   saveLocally(); 
 
   const syncTag = document.getElementById('cloud-sync-status');
@@ -660,43 +549,10 @@ async function manualAccount(e) {
     if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
   }
 
-  showTaskFeedback('acc-task-feedback', 'SUCCESS', `Account ${accNo} created and synced live.`);
+  const resultMsg = isPending ? `Account ${accNo} created. Final approval pending from Admin.` : `Account ${accNo} created & approved successfully.`;
+  showTaskFeedback('acc-task-feedback', 'SUCCESS', resultMsg);
   e.target.reset();
   document.getElementById('acc-otp-box').style.display = 'none';
-}
-
-function calculateFDReturns() {
-  const amt = parseFloat(document.getElementById('fd-amount').value) || 0;
-  const tenureMonths = parseInt(document.getElementById('fd-tenure').value) || 0;
-  const interest = amt * (6.5 / 100) * (tenureMonths / 12);
-  const maturityVal = amt + interest;
-  document.getElementById('fd-calc-display').value = `EST. MATURITY: ${maturityVal.toFixed(2)}`;
-}
-
-function bookFixedDeposit(e) {
-  e.preventDefault();
-  const accNo = document.getElementById('fd-accno').value.trim();
-  const amt = parseFloat(document.getElementById('fd-amount').value);
-  const tenure = parseInt(document.getElementById('fd-tenure').value);
-  const payout = document.getElementById('fd-payout').value;
-
-  const acc = db.accounts.find(a => a.accountNumber === accNo);
-  if(!acc) { showTaskFeedback('fd-task-feedback', 'DECLINED', 'Linked account number not found.'); return; }
-  if(acc.balance < amt) { showTaskFeedback('fd-task-feedback', 'DECLINED', 'Insufficient balance in account to fund FD.'); return; }
-
-  acc.balance -= amt;
-  const fdId = 'FD_' + Date.now();
-  const maturityVal = amt + (amt * 0.065 * (tenure / 12));
-
-  if(!db.fds) db.fds = [];
-  db.fds.push({ fdId, accNo, amount: amt, tenure, payout, maturityVal, status: 'ACTIVE' });
-
-  db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'FD_BOOK', amount: amt, operator: `${session.id}`, narrative: `FD BOOKED: ${fdId}` });
-  saveLocally();
-  showTaskFeedback('fd-task-feedback', 'SUCCESS', `FD ${fdId} booked successfully for A/C ${accNo}!`);
-  e.target.reset();
-  document.getElementById('fd-calc-display').value = 'EST. MATURITY: 0.00';
-  syncUI();
 }
 
 let editingAccNo = null;
@@ -709,29 +565,26 @@ function openEditAcc(accNo) {
   document.getElementById('edit-name').value = acc.holderName;
   document.getElementById('edit-father').value = acc.fatherName;
   document.getElementById('edit-phone').value = acc.phone;
-  document.getElementById('edit-email').value = acc.email === 'N/A' ? '' : acc.email;
+  document.getElementById('edit-email').value = acc.email;
   document.getElementById('edit-address').value = acc.address;
   document.getElementById('edit-sms').value = acc.smsOptIn ? 'ON' : 'OFF';
   document.getElementById('box-edit-acc').style.display = 'block';
 }
 
-function closeEditAcc() { document.getElementById('box-edit-acc').style.display = 'none'; editingAccNo = null; }
+function closeEditAcc() {
+  document.getElementById('box-edit-acc').style.display = 'none';
+  editingAccNo = null;
+}
 
 function saveAccEdit(e) {
   e.preventDefault();
   if(!editingAccNo) return;
-  const phone = document.getElementById('edit-phone').value.trim().replace(/[^0-9]/g,'');
-  const emailInput = document.getElementById('edit-email').value.trim();
-
-  if (phone.length !== 10) { showTaskFeedback('edit-task-feedback', 'DECLINED', 'Phone must be 10 digits.'); return; }
-  if (emailInput !== '' && !isValidEmail(emailInput)) { showTaskFeedback('edit-task-feedback', 'DECLINED', 'Invalid email format.'); return; }
-
   const updatedData = {
     accountNumber: editingAccNo,
     holderName: document.getElementById('edit-name').value.trim().toUpperCase(),
     fatherName: document.getElementById('edit-father').value.trim().toUpperCase(),
-    phone: phone,
-    email: emailInput !== '' ? emailInput.toUpperCase() : 'N/A',
+    phone: document.getElementById('edit-phone').value.trim().replace(/[^0-9]/g,''),
+    email: document.getElementById('edit-email').value.trim().toUpperCase(),
     address: document.getElementById('edit-address').value.trim().toUpperCase(),
     smsOptIn: (document.getElementById('edit-sms').value === 'ON')
   };
@@ -740,61 +593,65 @@ function saveAccEdit(e) {
     const acc = db.accounts.find(a => a.accountNumber === editingAccNo);
     if(acc) {
       Object.assign(acc, updatedData);
-      db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: `${session.id} (ADMIN)`, narrative: 'ADMIN EDIT' });
+      db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: `${session.id} (ADMIN)`, narrative: 'DIRECT ADMIN EDIT' });
       saveLocally();
-      showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Account updated by Admin.');
+      showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Account successfully edited and committed by Admin.');
     }
   } else {
     if(!db.editRequests) db.editRequests = [];
     db.editRequests.push({ id: 'REQ_' + Date.now(), type: 'EDIT', accNo: editingAccNo, data: updatedData, operator: session.id });
     saveLocally();
-    showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Edit request submitted to Manager/Admin.');
+    showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Account modification request submitted to Admin for final approval.');
   }
   setTimeout(() => { closeEditAcc(); syncUI(); }, 1200);
 }
 
 function requestDeleteAccount(accNo) {
   if(session && session.role === 'ADMIN') {
-    if(confirm(`Delete account ${accNo}?`)) {
+    if(confirm(`ADMIN ACTION: DELETE ACCOUNT ${accNo}?`)) {
       db.accounts = db.accounts.filter(a => a.accountNumber !== accNo);
-      db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_DEL', amount: 0, operator: `${session.id}`, narrative: 'DELETED' });
+      db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type: 'ACC_DEL', amount: 0, operator: `${session.id} (ADMIN)`, narrative: 'ACCOUNT DELETED' });
       saveLocally();
-      alert(`Account ${accNo} deleted.`);
+      alert(`ACCOUNT ${accNo} DELETED SUCCESSFULLY.`);
       syncUI();
     }
   } else {
-    if(confirm(`Submit delete request for A/C ${accNo}?`)) {
+    if(confirm(`SUBMIT DELETE REQUEST FOR ACCOUNT ${accNo} TO ADMIN?`)) {
       if(!db.editRequests) db.editRequests = [];
       db.editRequests.push({ id: 'REQ_' + Date.now(), type: 'DELETE', accNo: accNo, operator: session.id });
       saveLocally();
-      alert('Delete request sent to Admin.');
+      alert('DELETE REQUEST SENT TO ADMIN FOR FINAL APPROVAL.');
     }
   }
 }
 
 function autoFetch() {
   const q=document.getElementById('tx-acc').value; const a=db.accounts.find(x=>x.accountNumber===q);
-  document.getElementById('tx-fetch').value=a?`${a.holderName} | BAL: ${a.balance.toFixed(2)} | PH: ${a.phone}`:'NOT FOUND';
+  document.getElementById('tx-fetch').value=a?`${a.holderName} | BAL: ${a.balance.toFixed(2)} | SMS: ${a.smsOptIn?'ON':'OFF'}`:'NOT FOUND';
 }
 
 // LIVE FEED: Send ONLY the specific transaction row/item to the cloud server immediately
 async function processTx(e) {
   e.preventDefault(); 
-  const accNo = document.getElementById('tx-acc').value; 
-  const amt = parseFloat(document.getElementById('tx-amt').value); 
-  const purpose = document.getElementById('tx-purpose').value;
-  const type = document.getElementById('tx-type').value; 
-  const ref = document.getElementById('tx-ref').value.toUpperCase();
+  const accNo=document.getElementById('tx-acc').value; 
+  const amt=parseFloat(document.getElementById('tx-amt').value); 
+  const type=document.getElementById('tx-type').value; 
+  const ref=document.getElementById('tx-ref').value.toUpperCase();
   
-  const acc = db.accounts.find(a => a.accountNumber === accNo); 
-  if(!acc){ showTaskFeedback('tx-task-feedback', 'DECLINED', 'Invalid account number.'); return; }
-  if(type==='DR' && acc.balance < amt){ showTaskFeedback('tx-task-feedback', 'DECLINED', 'Insufficient balance.'); return; }
+  const acc=db.accounts.find(a=>a.accountNumber===accNo); 
+  if(!acc){ 
+    showTaskFeedback('tx-task-feedback', 'DECLINED', 'Invalid account number. Transaction declined.');
+    return; 
+  }
+  if(type==='DR' && acc.balance<amt){ 
+    showTaskFeedback('tx-task-feedback', 'DECLINED', 'Insufficient balance for debit. Transaction declined.');
+    return; 
+  }
 
-  // Instant local calculation & render
-  if(type==='CR') acc.balance += amt; 
-  if(type==='DR') acc.balance -= amt;
+  if(type==='CR') acc.balance+=amt; 
+  if(type==='DR') acc.balance-=amt;
   
-  db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type, amount: amt, operator: `${session.id} (${currentClientIP})`, narrative: `${purpose}: ${ref}` }); 
+  db.ledger.unshift({ seq: db.ledger.length+1, timestamp: new Date().toLocaleTimeString(), accNo, type, amount: amt, operator: `${session.id} (${currentClientIP})`, narrative: ref }); 
   saveLocally(); 
   autoFetch();
 
@@ -810,7 +667,6 @@ async function processTx(e) {
         accNo,
         amount: amt,
         txType: type,
-        purpose,
         narrative: ref,
         operator: `${session.id} (${currentClientIP})`
       })
@@ -824,90 +680,9 @@ async function processTx(e) {
     if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
   }
 
-  showTaskFeedback('tx-task-feedback', 'SUCCESS', `Digital Receipt Issued. ${type} of ${amt.toFixed(2)} recorded. New Bal: ${acc.balance.toFixed(2)}`);
+  showTaskFeedback('tx-task-feedback', 'SUCCESS', `Transaction successful. ${type} of ${amt.toFixed(2)} posted. New Balance: ${acc.balance.toFixed(2)}`);
   document.getElementById('tx-amt').value=''; 
   document.getElementById('tx-ref').value='';
-}
-
-function loadPassbookData() {
-  const accNo = document.getElementById('pb-acc-input').value.trim();
-  const infoField = document.getElementById('pb-holder-info');
-  const tbody = document.getElementById('body-passbook-ledger');
-  
-  tbody.innerHTML = '';
-  
-  const acc = db.accounts.find(a => a.accountNumber === accNo);
-  if (!acc) {
-    infoField.value = 'ACCOUNT NOT FOUND';
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO ACCOUNT MATCHED</td></tr>';
-    return;
-  }
-  
-  infoField.value = `${acc.holderName} | BAL: ${acc.balance.toFixed(2)} | PH: ${acc.phone}`;
-  
-  const filteredLedger = db.ledger.filter(l => l.accNo === accNo);
-  if (!filteredLedger.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO TRANSACTION HISTORY FOR THIS A/C</td></tr>';
-    return;
-  }
-  
-  filteredLedger.forEach(l => {
-    const amtColor = l.type === 'CR' ? '#00ff00' : '#ffffff';
-    tbody.innerHTML += `
-      <tr>
-        <td>${l.timestamp}</td>
-        <td class="bold" style="color: ${amtColor};">${l.type}</td>
-        <td>${l.narrative || 'STANDARD TRANSACTION'}</td>
-        <td class="bold">${l.amount ? l.amount.toFixed(2) : '0.00'}</td>
-        <td class="dim">${l.operator}</td>
-      </tr>`;
-  });
-}
-
-function generatePassbookPDF() {
-  const accNo = document.getElementById('pb-acc-input').value.trim();
-  const acc = db.accounts.find(a => a.accountNumber === accNo);
-  
-  if (!acc) {
-    alert('PLEASE SELECT OR ENTER A VALID ACCOUNT NUMBER FIRST.');
-    return;
-  }
-
-  const printWindow = window.open('', '_blank', 'height=600,width=800');
-  const passbookHTML = document.getElementById('passbook-print-area').innerHTML;
-  
-  printWindow.document.write(`
-    <html>
-      <head>
-        <title>PASSBOOK STATEMENT - A/C ${accNo}</title>
-        <style>
-          body { font-family: 'Courier New', Courier, monospace; color: #000; padding: 20px; text-transform: uppercase; }
-          h2 { border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 15px; }
-          .meta { margin-bottom: 20px; font-size: 0.9rem; line-height: 1.4; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8rem; }
-          th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-          th { background: #eee; }
-        </style>
-      </head>
-      <body>
-        <h2>CRIS-PRS // OFFICIAL ACCOUNT PASSBOOK STATEMENT</h2>
-        <div class="meta">
-          <strong>A/C NUMBER:</strong> ${acc.accountNumber}<br>
-          <strong>HOLDER NAME:</strong> ${acc.holderName}<br>
-          <strong>FATHER'S NAME:</strong> ${acc.fatherName}<br>
-          <strong>PHONE:</strong> ${acc.phone} | <strong>CURRENT BALANCE:</strong> INR ${acc.balance.toFixed(2)}<br>
-          <strong>GENERATED ON:</strong> ${new Date().toLocaleString()}
-        </div>
-        <table>
-          ${passbookHTML}
-        </table>
-        <script>
-          window.onload = function() { window.print(); };
-        </script>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
 }
 
 function renderAdmin() {
@@ -935,19 +710,35 @@ function renderAdmin() {
   });
 }
 
-function approveUser(uid) { const u = db.users.find(x => x.id === uid); if(u) { u.status = 'ACTIVE'; saveLocally(); alert(`Employee ${uid} approved.`); renderAdmin(); } }
-function rejectUser(uid) { db.users = db.users.filter(x => x.id !== uid); saveLocally(); alert(`Employee ${uid} rejected.`); renderAdmin(); }
-function toggleUserSuspend(uid) { const u = db.users.find(x => x.id === uid); if(u) { u.status = (u.status === 'SUSPENDED') ? 'ACTIVE' : 'SUSPENDED'; saveLocally(); renderAdmin(); } }
+function approveUser(uid) {
+  const u = db.users.find(x => x.id === uid);
+  if(u) { u.status = 'ACTIVE'; saveLocally(); alert(`OPERATOR ${uid} APPROVED.`); renderAdmin(); }
+}
+function rejectUser(uid) {
+  db.users = db.users.filter(x => x.id !== uid);
+  saveLocally(); alert(`OPERATOR ${uid} REJECTED & REMOVED.`); renderAdmin();
+}
+function toggleUserSuspend(uid) {
+  const u = db.users.find(x => x.id === uid);
+  if(u) { u.status = (u.status === 'SUSPENDED') ? 'ACTIVE' : 'SUSPENDED'; saveLocally(); renderAdmin(); }
+}
 
 function approveEditReq(idx) {
   const req = db.editRequests[idx];
-  if(req.type === 'EDIT') { const acc = db.accounts.find(a => a.accountNumber === req.accNo); if(acc) Object.assign(acc, req.data); }
-  else if(req.type === 'DELETE') { db.accounts = db.accounts.filter(a => a.accountNumber !== req.accNo); }
+  if(req.type === 'EDIT') {
+    const acc = db.accounts.find(a => a.accountNumber === req.accNo);
+    if(acc) Object.assign(acc, req.data);
+  } else if(req.type === 'DELETE') {
+    db.accounts = db.accounts.filter(a => a.accountNumber !== req.accNo);
+  }
   db.editRequests.splice(idx, 1);
-  saveLocally(); alert('Request approved.'); renderAdmin(); syncUI();
+  saveLocally(); alert('REQUEST APPROVED & APPLIED.'); renderAdmin(); syncUI();
 }
 
-function rejectEditReq(idx) { db.editRequests.splice(idx, 1); saveLocally(); alert('Request rejected.'); renderAdmin(); }
+function rejectEditReq(idx) {
+  db.editRequests.splice(idx, 1);
+  saveLocally(); alert('REQUEST REJECTED.'); renderAdmin();
+}
 
 function openSearchModal(){ document.getElementById('search-modal').style.display='flex'; runSearch(); }
 function closeSearchModal(){ document.getElementById('search-modal').style.display='none'; }
@@ -960,8 +751,12 @@ function runSearch() {
     tb.innerHTML+=`
       <tr>
         <td class="bold">${a.accountNumber}</td>
-        <td><strong>NAME:</strong> ${a.holderName}<br><span class="dim">FATHER:</span> ${a.fatherName}</td>
-        <td>PH: ${a.phone}<br>NOMINEE: ${a.nominee}</td>
+        <td>
+          <strong>NAME:</strong> ${a.holderName}<br>
+          <span class="dim">FATHER:</span> ${a.fatherName}<br>
+          <span class="dim">ADDR:</span> ${a.address}
+        </td>
+        <td>PH: ${a.phone}<br>SMS: ${a.smsOptIn?'ON':'OFF'}</td>
         <td class="bold">${a.balance.toFixed(2)}</td>
         <td>
           <button onclick="useSearch('${a.accountNumber}')">USE</button>
@@ -975,28 +770,22 @@ function useSearch(acc){ closeSearchModal(); showPage('page-teller'); document.g
 
 function viewAccountHistory(accNo) {
   closeSearchModal();
-  showPage('page-passbook');
-  document.getElementById('pb-acc-input').value = accNo;
-  loadPassbookData();
-}
-
-function updatePerformanceMetrics() {
-  if(!session) return;
-  const myAccs = db.accounts.filter(a => a.status === 'APPROVED').length;
-  const myFds = db.fds ? db.fds.length : 0;
-  let myCash = 0;
-  db.ledger.forEach(l => { if(l.type === 'CR' && l.operator && l.operator.includes(session.id)) myCash += l.amount; });
-
-  document.getElementById('perf-accs').innerText = myAccs;
-  document.getElementById('perf-fds').innerText = myFds;
-  document.getElementById('perf-cash').innerText = myCash.toFixed(2);
+  showPage('page-audit');
+  const tb = document.getElementById('body-journal');
+  tb.innerHTML = '';
+  const filtered = db.ledger.filter(l => l.accNo === accNo);
+  if(!filtered.length) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;">NO TRANSACTIONS FOUND FOR A/C ${accNo}</td></tr>`;
+    return;
+  }
+  filtered.forEach(l => {
+    tb.innerHTML += `<tr><td>${l.seq}</td><td>${l.timestamp}</td><td class="bold">${l.accNo}</td><td>${l.type}</td><td>${l.amount.toFixed(2)} (${l.narrative})</td><td class="dim">${l.operator}</td></tr>`;
+  });
 }
 
 function syncUI() {
   let cr=0, dr=0; db.ledger.forEach(l=>{ if(l.type==='CR')cr+=l.amount; else if(l.type==='DR')dr+=l.amount; });
-  document.getElementById('val-dep').innerText=cr.toFixed(2); 
-  document.getElementById('val-with').innerText=dr.toFixed(2); 
-  document.getElementById('val-accs').innerText = db.accounts.length + (db.fds ? db.fds.length : 0);
+  document.getElementById('val-dep').innerText=cr.toFixed(2); document.getElementById('val-with').innerText=dr.toFixed(2); document.getElementById('val-accs').innerText=db.accounts.length;
   
   const ab=document.getElementById('body-accs'); ab.innerHTML='';
   db.accounts.forEach(a => {
@@ -1004,8 +793,8 @@ function syncUI() {
     ab.innerHTML+=`
       <tr>
         <td class="bold">${a.accountNumber} ${statusBadge}</td>
-        <td><strong>${a.holderName}</strong><br><span class="dim">TYPE: ${a.type}</span></td>
-        <td class="dim">PH: ${a.phone}<br>NOM: ${a.nominee}</td>
+        <td><strong>${a.holderName}</strong><br><span class="dim">FATHER: ${a.fatherName}</span></td>
+        <td class="dim">PH: ${a.phone}<br>SMS: ${a.smsOptIn?'ON':'OFF'}</td>
         <td class="bold">${a.balance.toFixed(2)}</td>
         <td>
           <button onclick="openEditAcc('${a.accountNumber}')">EDIT</button>
@@ -1014,35 +803,24 @@ function syncUI() {
       </tr>`;
   });
 
-  const fb = document.getElementById('body-fds');
-  if(fb) {
-    fb.innerHTML = '';
-    if(!db.fds || !db.fds.length) {
-      fb.innerHTML = '<tr><td colspan="6" style="text-align:center;">NO FIXED DEPOSITS BOOKED YET</td></tr>';
-    } else {
-      db.fds.forEach(f => {
-        fb.innerHTML += `<tr><td class="bold">${f.fdId}</td><td>${f.accNo}</td><td>${f.amount.toFixed(2)}</td><td>${f.tenure} MOS</td><td>${f.maturityVal.toFixed(2)}</td><td>${f.status}</td></tr>`;
-      });
-    }
-  }
-
   const jb = document.getElementById('body-journal');
   if(jb) {
     jb.innerHTML = '';
-    if(!db.ledger || !db.ledger.length) {
-      jb.innerHTML = '<tr><td colspan="6" style="text-align:center;">NO AUDIT LOGS FOUND</td></tr>';
-    } else {
-      db.ledger.slice(0, 50).forEach(l => {
-        jb.innerHTML += `<tr><td>${l.seq}</td><td>${l.timestamp}</td><td class="bold">${l.accNo || 'SYS'}</td><td>${l.type}</td><td>${l.amount ? l.amount.toFixed(2) : '0.00'} (${l.narrative})</td><td class="dim">${l.operator}</td></tr>`;
-      });
-    }
+    db.ledger.slice(0, 50).forEach(l => {
+      jb.innerHTML += `<tr><td>${l.seq}</td><td>${l.timestamp}</td><td class="bold">${l.accNo || 'SYS'}</td><td>${l.type}</td><td>${l.amount ? l.amount.toFixed(2) : '0.00'} (${l.narrative})</td><td class="dim">${l.operator}</td></tr>`;
+    });
   }
 }
 
 function updateNet() {
   const tag = document.getElementById('net-status-tag');
-  if(navigator.onLine){ tag.innerText='ONLINE'; tag.style.color='#ffffff'; } 
-  else { tag.innerText='OFFLINE'; tag.style.color='#888888'; const syncTag = document.getElementById('cloud-sync-status'); if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)'; }
+  if(navigator.onLine){ 
+    tag.innerText='ONLINE'; tag.style.color='#ffffff'; 
+  } else { 
+    tag.innerText='OFFLINE'; tag.style.color='#888888'; 
+    const syncTag = document.getElementById('cloud-sync-status');
+    if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
+  }
 }
 window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet); 
 
