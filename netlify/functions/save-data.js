@@ -1,57 +1,48 @@
-const { Client } = require('pg');
+const { Pool } = require('pg');
 
-exports.handler = async function(event, context) {
-  const apiKey = event.headers['x-api-key'] || event.headers['X-Api-Key'];
-  if (apiKey !== process.env.API_SECRET_KEY) {
-    return { statusCode: 401, body: JSON.stringify({ error: 'SYNC REJECTED: Unauthorized' }) };
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+const handler = async (event) => {
+  const apiKey = event.headers['x-api-key'];
+  if (apiKey !== 'CRIS_SECURE_998877') {
+    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
   }
 
-  const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-  });
-
   try {
-    await client.connect();
-
-    // Ensure state table exists
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS prs_app_state (
-        id INT PRIMARY KEY DEFAULT 1,
-        payload JSONB,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // HANDLE GET: Fetch saved state from CockroachDB when loading fresh
+    const client = await pool.connect();
+    
     if (event.httpMethod === 'GET') {
-      const res = await client.query('SELECT payload FROM prs_app_state WHERE id = 1');
-      await client.end();
-      if (res.rows.length > 0) {
-        return { 
-          statusCode: 200, 
-          body: JSON.stringify(res.rows[0].payload) 
-        };
-      }
-      return { statusCode: 200, body: null };
+      const result = await client.query('SELECT data FROM app_store WHERE id = 1');
+      client.release();
+      const data = result.rows.length > 0 ? result.rows[0].data : null;
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data || {})
+      };
     }
 
-    // HANDLE POST: Save/Upsert state blob to CockroachDB
     if (event.httpMethod === 'POST') {
-      await client.query(`
-        UPSERT INTO prs_app_state (id, payload, updated_at) 
-        VALUES (1, $1::JSONB, NOW())
-      `, [event.body]);
-
-      await client.end();
-      return { statusCode: 200, body: JSON.stringify({ status: 'SYNCED TO COCKROACHDB' }) };
+      const payload = event.body;
+      await client.query(
+        'INSERT INTO app_store (id, data) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET data = $1',
+        [payload]
+      );
+      client.release();
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ status: 'SUCCESS' })
+      };
     }
 
-    await client.end();
-    return { statusCode: 405, body: 'Method Not Allowed' };
-
+    client.release();
+    return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
   } catch (err) {
-    try { await client.end(); } catch(e){}
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
+
+module.exports = { handler };
