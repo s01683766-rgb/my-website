@@ -17,7 +17,7 @@ const handler = async (event) => {
     if (event.httpMethod === 'GET') {
       const result = await client.query('SELECT data FROM app_store WHERE id = 1');
       client.release();
-      const data = result.rows.length > 0 ? result.rows[0].data : { users: [], accounts: [], fds: [], ledger: [], editRequests: [] };
+      const data = result.rows.length > 0 ? result.rows[0].data : { users: [], accounts: [], ledger: [], editRequests: [] };
       return {
         statusCode: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -28,28 +28,16 @@ const handler = async (event) => {
     if (event.httpMethod === 'POST') {
       const body = JSON.parse(event.body);
       
-      // Handle full sync fallback
-      if (body.action === 'FULL_SYNC' || !body.action) {
-        const payloadData = body.action === 'FULL_SYNC' ? body.data : body;
-        await client.query(
-          'INSERT INTO app_store (id, data) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET data = $1',
-          [JSON.stringify(payloadData)]
-        );
-        client.release();
-        return { statusCode: 200, body: JSON.stringify({ status: 'SUCCESS', mode: 'FULL' }) };
-      }
-
-      // Handle Live Feed-Based Row Updates (Bank/LIC Grade)
       const resCurrent = await client.query('SELECT data FROM app_store WHERE id = 1');
-      let dbState = resCurrent.rows.length > 0 ? resCurrent.rows[0].data : { users: [], accounts: [], fds: [], ledger: [], editRequests: [] };
+      let dbState = resCurrent.rows.length > 0 ? resCurrent.rows[0].data : { users: [], accounts: [], ledger: [], editRequests: [] };
       
       if (!dbState.accounts) dbState.accounts = [];
       if (!dbState.ledger) dbState.ledger = [];
-      if (!dbState.fds) dbState.fds = [];
       if (!dbState.users) dbState.users = [];
 
+      // Handle feed-based single row updates
       if (body.action === 'ADD_TXN') {
-        const { accNo, amount, txType, purpose, narrative, operator } = body;
+        const { accNo, amount, txType, narrative, operator } = body;
         const acc = dbState.accounts.find(a => a.accountNumber === accNo);
         if (acc) {
           if (txType === 'CR') acc.balance += parseFloat(amount);
@@ -62,7 +50,7 @@ const handler = async (event) => {
           type: txType,
           amount: parseFloat(amount),
           operator,
-          narrative: `${purpose}: ${narrative}`
+          narrative
         });
       } else if (body.action === 'ADD_ACC') {
         dbState.accounts.push(body.account);
@@ -73,8 +61,11 @@ const handler = async (event) => {
           type: 'ACC_OPEN',
           amount: 0,
           operator: body.operator,
-          narrative: 'ACCOUNT OPENED'
+          narrative: 'NEW ACCOUNT OPENED'
         });
+      } else {
+        // Fallback for full state replacement if needed
+        dbState = body;
       }
 
       await client.query(
@@ -82,7 +73,7 @@ const handler = async (event) => {
         [JSON.stringify(dbState)]
       );
       client.release();
-      return { statusCode: 200, body: JSON.stringify({ status: 'SUCCESS', mode: 'FEED', db: dbState }) };
+      return { statusCode: 200, body: JSON.stringify({ status: 'SUCCESS', db: dbState }) };
     }
 
     client.release();
