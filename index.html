@@ -14,7 +14,6 @@
     .bold { font-weight: bold; } .dim { color: var(--dim); } .blink { animation: blinker 1s linear infinite; }
     @keyframes blinker { 50% { opacity: 0; } }
 
-    /* Blinking Dots Indicator Animation */
     .loading-dots span {
       animation: dotBlink 1.4s infinite both;
       font-weight: bold;
@@ -61,7 +60,6 @@
     #search-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 10000; padding: 14px; flex-direction: column; gap: 10px; }
     .task-result-box { border: 2px solid var(--fg); background: #111; padding: 12px; margin-bottom: 10px; display: none; }
 
-    /* Print Controls & Receipt Header Styles */
     .print-controls-bar {
       display: flex;
       flex-wrap: wrap;
@@ -80,6 +78,11 @@
       cursor: pointer;
     }
     .print-receipt-header { display: none; }
+
+    body.hide-date .print-col-date, body.hide-date .print-date-row { display: none !important; }
+    body.hide-time .print-col-time, body.hide-time .print-time-row { display: none !important; }
+    body.hide-ip .print-col-ip, body.hide-ip .print-ip-row { display: none !important; }
+    body.hide-desc .print-col-desc, body.hide-desc .print-desc-row { display: none !important; }
 
     @media print {
       body { background: #fff !important; color: #000 !important; }
@@ -117,17 +120,17 @@
 </head>
 <body>
 
-<div id="fixed-search-hud"><button class="inverted" onclick="openSearchModal()">[SRCH] LOOKUP</button></div>
+<div id="fixed-search-hud"><button class="inverted" onclick="openSearchModal()">[SRCH] TRACK REF</button></div>
 
 <div id="search-modal">
   <div class="box" style="border: 2px solid var(--fg); height: 95vh; display:flex; flex-direction:column; gap:8px;">
-    <div class="box-title"><span>ON-DEMAND ACCOUNT LOOKUP DESK</span><span onclick="closeSearchModal()" style="cursor:pointer; text-decoration:underline;">[CLOSE X]</span></div>
+    <div class="box-title"><span>REFERENCE TRACKING & ACCOUNT LOOKUP DESK</span><span onclick="closeSearchModal()" style="cursor:pointer; text-decoration:underline;">[CLOSE X]</span></div>
     <div class="grid-2">
-      <div><select id="search-criteria" onchange="runSearch()"><option value="accNo" selected>1. 11-DIGIT ACC NO</option><option value="mobile">2. MOBILE NUMBER</option><option value="name">3. HOLDER NAME</option></select></div>
-      <div><input type="text" id="search-query" placeholder="ENTER QUERY..." oninput="runSearch()" /></div>
+      <div><select id="search-criteria" onchange="runSearch()"><option value="ref" selected>1. TRACK REF ID</option><option value="accNo">2. 11-DIGIT ACC NO</option><option value="mobile">3. MOBILE NUMBER</option><option value="name">4. HOLDER NAME</option></select></div>
+      <div><input type="text" id="search-query" placeholder="ENTER QUERY OR REF ID..." oninput="runSearch()" /></div>
     </div>
     <div style="flex:1; overflow-y:auto; border-top:1px dashed var(--fg); margin-top:6px;">
-      <table><thead><tr><th>ACC NO</th><th>HOLDER & DETAILS</th><th>CONTACT</th><th>BAL</th><th>ACTION</th></tr></thead><tbody id="search-results-body"><tr><td colspan="5" style="text-align:center;">ENTER A QUERY TO SEARCH ACCOUNTS ON-DEMAND</td></tr></tbody></table>
+      <table><thead><tr><th>REF ID</th><th>ACC / DETAILS</th><th>TYPE / STATUS</th><th>AMOUNT / INFO</th><th>ACTION</th></tr></thead><tbody id="search-results-body"><tr><td colspan="5" style="text-align:center;">ENTER A QUERY OR REFERENCE ID TO TRACK RECORD</td></tr></tbody></table>
     </div>
   </div>
 </div>
@@ -135,7 +138,7 @@
 <div class="prs-terminal">
 
   <div class="status-bar">
-    <div>SYS: [B&W-CORE-LAZY-V4]</div>
+    <div>SYS: [B&W-CORE-SECURE-V10]</div>
     <div>NET: <span id="net-status-tag" class="blink">CHECKING...</span></div>
     <div>USER: <span id="session-tag">DISCONNECTED</span></div>
     <div>IP: <span id="ip-tag">FETCHING...</span></div>
@@ -243,10 +246,10 @@
         </div>
       </div>
       <div class="print-controls-bar">
-        <label><input type="checkbox" id="chk-date-page-acc" checked /> DATE</label>
-        <label><input type="checkbox" id="chk-time-page-acc" checked /> TIME</label>
-        <label><input type="checkbox" id="chk-ip-page-acc" checked /> TERMINAL IP</label>
-        <label><input type="checkbox" id="chk-desc-page-acc" checked /> METADATA</label>
+        <label><input type="checkbox" id="chk-date-page-acc" checked onchange="togglePrintMeta('page-acc')" /> PRINT DATE</label>
+        <label><input type="checkbox" id="chk-time-page-acc" checked onchange="togglePrintMeta('page-acc')" /> PRINT TIME</label>
+        <label><input type="checkbox" id="chk-ip-page-acc" checked onchange="togglePrintMeta('page-acc')" /> TERMINAL IP</label>
+        <label><input type="checkbox" id="chk-desc-page-acc" checked onchange="togglePrintMeta('page-acc')" /> METADATA</label>
       </div>
       <div class="print-receipt-header" id="print-header-page-acc"></div>
       <div class="table-container">
@@ -284,10 +287,10 @@
         <button class="inverted" onclick="triggerPrint('page-passbook')" style="padding: 2px 8px; font-size: 0.7rem;">[ PRINT PASSBOOK ]</button>
       </div>
       <div class="print-controls-bar">
-        <label><input type="checkbox" id="chk-date-page-passbook" checked /> DATE</label>
-        <label><input type="checkbox" id="chk-time-page-passbook" checked /> TIME</label>
-        <label><input type="checkbox" id="chk-ip-page-passbook" checked /> TERMINAL IP</label>
-        <label><input type="checkbox" id="chk-desc-page-passbook" checked /> PARTICULARS</label>
+        <label><input type="checkbox" id="chk-date-page-passbook" checked onchange="togglePrintMeta('page-passbook')" /> PRINT DATE</label>
+        <label><input type="checkbox" id="chk-time-page-passbook" checked onchange="togglePrintMeta('page-passbook')" /> PRINT TIME</label>
+        <label><input type="checkbox" id="chk-ip-page-passbook" checked onchange="togglePrintMeta('page-passbook')" /> TERMINAL IP</label>
+        <label><input type="checkbox" id="chk-desc-page-passbook" checked onchange="togglePrintMeta('page-passbook')" /> PARTICULARS</label>
       </div>
       <div class="grid-2" style="margin-bottom: 10px;">
         <div><input type="number" id="pb-acc-input" placeholder="ENTER 11-DIGIT ACC NO" oninput="loadPassbookData()" /></div>
@@ -298,11 +301,11 @@
         <table>
           <thead>
             <tr>
-              <th>DATE</th>
-              <th>TIME</th>
-              <th>IP</th>
+              <th class="print-col-date">DATE</th>
+              <th class="print-col-time">TIME</th>
+              <th class="print-col-ip">IP</th>
               <th>TYPE</th>
-              <th>PARTICULARS / DESCRIPTION</th>
+              <th class="print-col-desc">PARTICULARS / DESCRIPTION</th>
               <th>AMOUNT</th>
               <th>CLEAR BAL</th>
             </tr>
@@ -322,21 +325,45 @@
         <span>REQUIRE ONLINE CONNECTION FOR DEBITS (DR):</span>
         <button type="button" id="btn-toggle-debit" class="inverted" onclick="toggleDebitSetting()">OFF</button>
       </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding: 6px 0; border-top:1px dashed var(--dim); margin-top:6px;">
+        <span>SIMULATED SMS GATEWAY ALERTS:</span>
+        <button type="button" id="btn-toggle-sms" class="inverted" onclick="toggleSmsGlobalSetting()">ON</button>
+      </div>
     </div>
+
+    <div class="box" style="margin-bottom:12px;">
+      <div class="box-title">ADMIN DIRECT USER / OPERATOR CREATION DESK</div>
+      <div id="admin-create-task-feedback" class="task-result-box"></div>
+      <form onsubmit="adminCreateUser(event)" style="display:flex; flex-direction:column; gap:8px;">
+        <div class="grid-2">
+          <input type="text" id="admin-new-uid" placeholder="NEW USER ID" required />
+          <input type="password" id="admin-new-pin" placeholder="SECURITY PIN" required />
+        </div>
+        <div class="grid-2">
+          <input type="tel" id="admin-new-phone" placeholder="MOBILE NO (SMS/OTP)" required />
+          <select id="admin-new-role">
+            <option value="OPERATOR" selected>ROLE: OPERATOR</option>
+            <option value="ADMIN">ROLE: ADMIN</option>
+          </select>
+        </div>
+        <button type="submit" class="inverted">[ CREATE & ACTIVATE USER DIRECTLY ]</button>
+      </form>
+    </div>
+
     <div class="box" style="margin-bottom:12px;">
       <div class="box-title">
         <span>PENDING OPERATOR REGISTRATIONS</span>
         <button class="inverted" onclick="triggerPrint('page-admin')" style="padding: 2px 8px; font-size: 0.7rem;">[ PRINT ADMIN DESK ]</button>
       </div>
       <div class="print-controls-bar">
-        <label><input type="checkbox" id="chk-date-page-admin" checked /> DATE</label>
-        <label><input type="checkbox" id="chk-time-page-admin" checked /> TIME</label>
-        <label><input type="checkbox" id="chk-ip-page-admin" checked /> TERMINAL IP</label>
-        <label><input type="checkbox" id="chk-desc-page-admin" checked /> METADATA</label>
+        <label><input type="checkbox" id="chk-date-page-admin" checked onchange="togglePrintMeta('page-admin')" /> PRINT DATE</label>
+        <label><input type="checkbox" id="chk-time-page-admin" checked onchange="togglePrintMeta('page-admin')" /> PRINT TIME</label>
+        <label><input type="checkbox" id="chk-ip-page-admin" checked onchange="togglePrintMeta('page-admin')" /> TERMINAL IP</label>
+        <label><input type="checkbox" id="chk-desc-page-admin" checked onchange="togglePrintMeta('page-admin')" /> METADATA</label>
       </div>
       <div class="print-receipt-header" id="print-header-page-admin"></div>
       <div class="table-container">
-        <table><thead><tr><th>USER ID</th><th>PHONE</th><th>STATUS</th></tr></thead><tbody id="body-pending-users"></tbody></table>
+        <table><thead><tr><th>USER ID</th><th>PHONE</th><th>ROLE SETTING</th><th>STATUS / ACTION</th></tr></thead><tbody id="body-pending-users"></tbody></table>
       </div>
     </div>
     <div class="box" style="margin-bottom:12px;">
@@ -363,14 +390,14 @@
         </div>
       </div>
       <div class="print-controls-bar">
-        <label><input type="checkbox" id="chk-date-page-audit" checked /> DATE</label>
-        <label><input type="checkbox" id="chk-time-page-audit" checked /> TIME</label>
-        <label><input type="checkbox" id="chk-ip-page-audit" checked /> TERMINAL IP</label>
-        <label><input type="checkbox" id="chk-desc-page-audit" checked /> DESCRIPTION</label>
+        <label><input type="checkbox" id="chk-date-page-audit" checked onchange="togglePrintMeta('page-audit')" /> PRINT DATE</label>
+        <label><input type="checkbox" id="chk-time-page-audit" checked onchange="togglePrintMeta('page-audit')" /> PRINT TIME</label>
+        <label><input type="checkbox" id="chk-ip-page-audit" checked onchange="togglePrintMeta('page-audit')" /> TERMINAL IP</label>
+        <label><input type="checkbox" id="chk-desc-page-audit" checked onchange="togglePrintMeta('page-audit')" /> DESCRIPTION</label>
       </div>
       <div class="print-receipt-header" id="print-header-page-audit"></div>
       <div class="table-container">
-        <table><thead><tr><th>SEQ</th><th>DATE</th><th>TIME</th><th>IP</th><th>ACC NO</th><th>TYP</th><th>AMT / PARTICULAR</th><th>OPERATOR</th></tr></thead><tbody id="body-journal"></tbody></table>
+        <table><thead><tr><th>SEQ</th><th>REF ID</th><th class="print-col-date">DATE</th><th class="print-col-time">TIME</th><th class="print-col-ip">IP</th><th>ACC NO</th><th>TYP</th><th class="print-col-desc">AMT / PARTICULAR</th><th>OPERATOR</th></tr></thead><tbody id="body-journal"></tbody></table>
       </div>
     </div>
   </div>
@@ -381,7 +408,23 @@ const DB_KEY = 'CRIS_PRS_MASTER_DB_PERSISTENT';
 const SERIAL_BASE = 10000000000;
 let smsPermissionGranted = false;
 let currentClientIP = 'FETCHING...';
+let deviceFingerprint = '';
 let isSyncing = false;
+
+// DYNAMIC BACKEND ROUTER: Cloudflare pages routes requests to Netlify backend securely
+const API_BASE_URL = window.location.hostname.includes('pages.dev') 
+  ? 'https://https://effervescent-macaron-414c57.netlify.app.netlify.app' 
+  : '';
+
+function getDeviceFingerprint() {
+  let fp = localStorage.getItem('CRIS_DEVICE_FP');
+  if (!fp) {
+    fp = 'FP_' + Math.random().toString(36).substring(2, 10).toUpperCase() + '_' + Date.now();
+    localStorage.setItem('CRIS_DEVICE_FP', fp);
+  }
+  return fp;
+}
+deviceFingerprint = getDeviceFingerprint();
 
 async function fetchClientIP() {
   try {
@@ -397,14 +440,17 @@ async function fetchClientIP() {
   }
 }
 
-// Lazy Loaded Core: Accounts list starts empty for instant startup performance
 let db = { 
-  users: [{ id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', lastIp: '127.0.0.1', phone: '0000000000' }], 
+  users: [{ id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', lastIp: '127.0.0.1', phone: '0000000000', deviceFp: deviceFingerprint }], 
   accounts: [], 
   ledger: [], 
   editRequests: [],
-  settings: { onlineDebitOnly: false }
+  settings: { onlineDebitOnly: false, smsEnabled: true }
 };
+
+function generateRefId() {
+  return 'REF-' + Math.floor(100000 + Math.random() * 900000);
+}
 
 function showTaskFeedback(containerId, status, message) {
   const box = document.getElementById(containerId);
@@ -440,7 +486,6 @@ function migrateLegacyData() {
   return existingData;
 }
 
-// REAL-TIME DUPLEX CLOUD SYNC
 async function backgroundSync(isInitial = false) {
   if (isSyncing) return;
   isSyncing = true;
@@ -450,7 +495,7 @@ async function backgroundSync(isInitial = false) {
     if (navigator.onLine) {
       if (syncTag && isInitial) syncTag.innerText = 'SYNCING...';
       
-      const res = await fetch('/.netlify/functions/save-data', {
+      const res = await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
         method: 'GET',
         headers: { 'x-api-key': 'CRIS_SECURE_998877' }
       });
@@ -458,15 +503,42 @@ async function backgroundSync(isInitial = false) {
       if (res.ok) {
         const cloudData = await res.json();
         if (cloudData && cloudData.users) {
+          const localStr = localStorage.getItem(DB_KEY);
+          if (localStr) {
+            try {
+              const localDb = JSON.parse(localStr);
+              if (localDb.accounts && cloudData.accounts) {
+                localDb.accounts.forEach(la => {
+                  if (!cloudData.accounts.some(ca => ca.accountNumber === la.accountNumber)) {
+                    cloudData.accounts.push(la);
+                  }
+                });
+              }
+              if (localDb.ledger && cloudData.ledger) {
+                localDb.ledger.forEach(ll => {
+                  if (!ll.refId || ll.refId.startsWith('OFFLINE-')) {
+                    ll.refId = generateRefId();
+                  }
+                  if (!cloudData.ledger.some(cl => cl.seq === ll.seq && cl.timestamp === ll.timestamp)) {
+                    cloudData.ledger.unshift(ll);
+                  }
+                });
+              }
+            } catch(e) {}
+          }
+
           db = cloudData;
           if(!db.editRequests) db.editRequests = [];
           if(!db.users) db.users = [];
           if(!db.accounts) db.accounts = [];
           if(!db.ledger) db.ledger = [];
-          if(!db.settings) db.settings = { onlineDebitOnly: false };
+          if(!db.settings) db.settings = { onlineDebitOnly: false, smsEnabled: true };
+          
           localStorage.setItem(DB_KEY, JSON.stringify(db));
           syncUI();
           if (syncTag) syncTag.innerText = 'SYNCED [REAL-TIME]';
+          
+          pushDataToServerSilent();
         }
       }
     } else {
@@ -479,13 +551,28 @@ async function backgroundSync(isInitial = false) {
   }
 }
 
-async function pushDataToServer() {
+async function pushDataToServerSilent() {
   if (!navigator.onLine) return;
+  try {
+    await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': 'CRIS_SECURE_998877' },
+      body: JSON.stringify(db)
+    });
+  } catch(e) {}
+}
+
+async function pushDataToServer() {
+  if (!navigator.onLine) {
+    const syncTag = document.getElementById('cloud-sync-status');
+    if(syncTag) syncTag.innerText = 'OFFLINE (QUEUED)';
+    return;
+  }
   const syncTag = document.getElementById('cloud-sync-status');
   if (syncTag) syncTag.innerText = 'UPLOADING...';
 
   try {
-    const response = await fetch('/.netlify/functions/save-data', {
+    const response = await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': 'CRIS_SECURE_998877' },
       body: JSON.stringify(db)
@@ -516,13 +603,19 @@ async function init() {
       session = JSON.parse(savedSession);
       const u = db.users.find(x => x.id === session.id);
       if (u && u.status === 'ACTIVE') {
-        setTimeout(() => {
-          document.getElementById('session-tag').innerText = `${u.id} [${u.role}]`;
-          document.getElementById('app-nav').style.display = 'grid';
-          document.getElementById('btn-admin').style.display = (u.role === 'ADMIN') ? 'block' : 'none';
-          showPage('page-dash');
-          syncUI();
-        }, 50);
+        if (!u.deviceFp) u.deviceFp = deviceFingerprint;
+        if (u.deviceFp === deviceFingerprint) {
+          setTimeout(() => {
+            document.getElementById('session-tag').innerText = `${u.id} [${u.role}]`;
+            document.getElementById('app-nav').style.display = 'grid';
+            document.getElementById('btn-admin').style.display = (u.role === 'ADMIN') ? 'block' : 'none';
+            showPage('page-dash');
+            syncUI();
+          }, 50);
+        } else {
+          session = null;
+          localStorage.removeItem(DB_KEY + '_SESSION');
+        }
       } else {
         session = null;
         localStorage.removeItem(DB_KEY + '_SESSION');
@@ -531,7 +624,6 @@ async function init() {
   }
   if (session) syncUI();
 
-  // Continuous background real-time polling every 3 seconds
   setInterval(() => {
     backgroundSync(false);
   }, 3000);
@@ -560,7 +652,6 @@ function showPage(id) {
   if(id==='page-admin') renderAdmin();
 }
 
-// Browser SMS permission prompt similar to microphone permissions on modern websites
 async function requestSmsBrowserPermission() {
   try {
     if ('permissions' in navigator) {
@@ -573,7 +664,7 @@ async function requestSmsBrowserPermission() {
   
   if (smsPermissionGranted) {
     document.getElementById('sms-perm-status').innerText = 'ON';
-    alert('BROWSER SMS/NOTIFICATION PERMISSION GRANTED & SECURED.');
+    alert('BROWSER SMS/NOTIFICATION PERMISSION GRANTED.');
   } else {
     document.getElementById('sms-perm-status').innerText = 'OFF';
     alert('SMS PERMISSION DENIED BY BROWSER POLICY.');
@@ -588,7 +679,7 @@ function handleLogon(e) {
     const uid=document.getElementById('inp-uid').value.trim().toUpperCase(), pin=document.getElementById('inp-pin').value.trim();
     let u = db.users.find(x=>x.id===uid && x.pin===pin);
     if(!u && uid==='ADMIN' && pin==='9999') {
-      u={id:'ADMIN',pin:'9999',role:'ADMIN',status:'ACTIVE',lastIp: currentClientIP, phone:'0000000000'};
+      u={id:'ADMIN',pin:'9999',role:'ADMIN',status:'ACTIVE',lastIp: currentClientIP, phone:'0000000000', deviceFp: deviceFingerprint};
       db.users.push(u);
     }
     if(!u){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Invalid credentials.'); return; }
@@ -596,6 +687,7 @@ function handleLogon(e) {
     if(u.status==='SUSPENDED'){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Account suspended.'); return; }
 
     u.lastIp = currentClientIP;
+    u.deviceFp = deviceFingerprint;
     session=u; 
     save();
 
@@ -618,10 +710,56 @@ function handleOnlineReg(e) {
 
     if(db.users.some(x => x.id === uid)) { showTaskFeedback('reg-task-feedback', 'DECLINED', 'ID already exists.'); return; }
 
-    db.users.push({ id: uid, pin: pin, role: 'OPERATOR', status: 'PENDING', lastIp: currentClientIP, phone: phone });
+    db.users.push({ id: uid, pin: pin, role: 'OPERATOR', status: 'PENDING', lastIp: currentClientIP, phone: phone, deviceFp: deviceFingerprint });
     save();
     showTaskFeedback('reg-task-feedback', 'SUCCESS', 'Registration submitted. Pending Admin approval.');
     setTimeout(() => { toggleAuth(); }, 1000);
+  }, 400);
+}
+
+function adminCreateUser(e) {
+  e.preventDefault();
+  showLoadingFeedback('admin-create-task-feedback');
+
+  setTimeout(() => {
+    const uid = document.getElementById('admin-new-uid').value.trim().toUpperCase();
+    const pin = document.getElementById('admin-new-pin').value.trim();
+    const phone = document.getElementById('admin-new-phone').value.trim().replace(/[^0-9]/g,'');
+    const role = document.getElementById('admin-new-role').value;
+
+    if (db.users.some(x => x.id === uid)) {
+      showTaskFeedback('admin-create-task-feedback', 'DECLINED', 'USER ID ALREADY EXISTS.');
+      return;
+    }
+
+    db.users.push({
+      id: uid,
+      pin: pin,
+      role: role,
+      status: 'ACTIVE',
+      lastIp: currentClientIP,
+      phone: phone,
+      deviceFp: deviceFingerprint
+    });
+
+    const refId = generateRefId();
+    db.ledger.unshift({
+      seq: db.ledger.length + 1,
+      refId: refId,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString(),
+      ip: currentClientIP,
+      accNo: 'SYS-USER',
+      type: 'USER_CREATE',
+      amount: 0,
+      operator: session ? session.id : 'ADMIN',
+      narrative: `CREATED USER: ${uid} [ROLE: ${role}] [REF: ${refId}]`
+    });
+
+    save();
+    showTaskFeedback('admin-create-task-feedback', 'SUCCESS', `USER ${uid} CREATED & ACTIVATED DIRECTLY. REF: ${refId}`);
+    e.target.reset();
+    renderAdmin();
   }, 400);
 }
 
@@ -708,6 +846,7 @@ function manualAccount(e) {
     const accNo = getSerial();
     const isPending = session && session.status === 'PENDING';
     const nowStr = new Date().toLocaleString();
+    const refId = navigator.onLine ? generateRefId() : ('OFFLINE-' + Math.floor(1000 + Math.random() * 9000));
     
     db.accounts.push({ 
       accountNumber: accNo, 
@@ -720,13 +859,14 @@ function manualAccount(e) {
       status: isPending ? 'PENDING' : 'APPROVED',
       smsOptIn: (document.getElementById('acc-sms').value==='ON'),
       openedAt: nowStr,
-      lastAccessed: nowStr
+      lastAccessed: nowStr,
+      refId: refId
     });
     
-    db.ledger.unshift({ seq: db.ledger.length+1, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo, type: 'ACC_OPEN', amount: 0, operator: session ? session.id : 'GUEST', narrative: 'NEW ACCOUNT OPENED' });
+    db.ledger.unshift({ seq: db.ledger.length+1, refId: refId, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo, type: 'ACC_OPEN', amount: 0, operator: session ? session.id : 'GUEST', narrative: `NEW ACCOUNT OPENED [REF: ${refId}]` });
     save(); 
 
-    showTaskFeedback('acc-task-feedback', 'SUCCESS', `Account ${accNo} created & synced.`);
+    showTaskFeedback('acc-task-feedback', 'SUCCESS', `Account ${accNo} created & synced. REF ID: ${refId}`);
     e.target.reset();
   }, 400);
 }
@@ -765,43 +905,45 @@ function saveAccEdit(e) {
       smsOptIn: (document.getElementById('edit-sms').value === 'ON')
     };
 
+    const refId = navigator.onLine ? generateRefId() : ('OFFLINE-' + Math.floor(1000 + Math.random() * 9000));
+
     if(session && session.role === 'ADMIN') {
       const acc = db.accounts.find(a => a.accountNumber === editingAccNo);
       if(acc) {
         Object.assign(acc, updatedData);
         acc.lastAccessed = new Date().toLocaleString();
-        db.ledger.unshift({ seq: db.ledger.length+1, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: session.id, narrative: 'ADMIN EDIT' });
+        db.ledger.unshift({ seq: db.ledger.length+1, refId: refId, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: session.id, narrative: `ADMIN EDIT [REF: ${refId}]` });
         save();
-        showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Account updated.');
+        showTaskFeedback('edit-task-feedback', 'SUCCESS', `Account updated. REF ID: ${refId}`);
       }
     } else {
       if(!db.editRequests) db.editRequests = [];
-      db.editRequests.push({ id: 'REQ_' + Date.now(), type: 'EDIT', accNo: editingAccNo, data: updatedData, operator: session.id });
+      db.editRequests.push({ id: 'REQ_' + Date.now(), type: 'EDIT', accNo: editingAccNo, data: updatedData, operator: session.id, refId: refId });
       save();
-      showTaskFeedback('edit-task-feedback', 'SUCCESS', 'Edit request submitted.');
+      showTaskFeedback('edit-task-feedback', 'SUCCESS', `Edit request submitted. REF ID: ${refId}`);
     }
     setTimeout(() => { closeEditAcc(); loadAccountDirectory(); }, 1000);
   }, 400);
 }
 
 function requestDeleteAccount(accNo) {
+  const refId = navigator.onLine ? generateRefId() : ('OFFLINE-' + Math.floor(1000 + Math.random() * 9000));
   if(session && session.role === 'ADMIN') {
-    if(confirm(`DELETE ACCOUNT ${accNo}?`)) {
+    if(confirm(`DELETE ACCOUNT ${accNo}? [REF: ${refId}]`)) {
       db.accounts = db.accounts.filter(a => a.accountNumber !== accNo);
-      db.ledger.unshift({ seq: db.ledger.length+1, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo, type: 'ACC_DEL', amount: 0, operator: session.id, narrative: 'DELETED' });
+      db.ledger.unshift({ seq: db.ledger.length+1, refId: refId, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo, type: 'ACC_DEL', amount: 0, operator: session.id, narrative: `DELETED [REF: ${refId}]` });
       save();
       loadAccountDirectory();
     }
   } else {
-    if(confirm(`SUBMIT DELETE REQUEST FOR ${accNo}?`)) {
+    if(confirm(`SUBMIT DELETE REQUEST FOR ${accNo}? [REF: ${refId}]`)) {
       if(!db.editRequests) db.editRequests = [];
-      db.editRequests.push({ id: 'REQ_' + Date.now(), type: 'DELETE', accNo: accNo, operator: session.id });
+      db.editRequests.push({ id: 'REQ_' + Date.now(), type: 'DELETE', accNo: accNo, operator: session.id, refId: refId });
       save();
     }
   }
 }
 
-// Lazy load account directory list ONLY when user clicks the button
 function loadAccountDirectory() {
   const ab = document.getElementById('body-accs');
   ab.innerHTML = '';
@@ -812,7 +954,7 @@ function loadAccountDirectory() {
   db.accounts.forEach(a => {
     ab.innerHTML += `
       <tr>
-        <td class="bold">${a.accountNumber}</td>
+        <td class="bold">${a.accountNumber}<br><span class="dim" style="font-size:0.6rem;">REF: ${a.refId || 'N/A'}</span></td>
         <td><strong>${a.holderName}</strong><br><span class="dim">FATHER: ${a.fatherName}</span></td>
         <td class="dim">PH: ${a.phone}</td>
         <td class="bold">${a.balance.toFixed(2)}</td>
@@ -821,7 +963,6 @@ function loadAccountDirectory() {
   });
 }
 
-// Lazy lookup for teller box
 async function autoFetch() {
   const q = document.getElementById('tx-acc').value.trim();
   const fetchBox = document.getElementById('tx-fetch');
@@ -846,7 +987,6 @@ async function autoFetch() {
   }
 }
 
-// Transaction clearing desk supporting negative amounts for debits
 async function processTx(e) {
   e.preventDefault(); 
   showLoadingFeedback('tx-task-feedback');
@@ -856,8 +996,8 @@ async function processTx(e) {
     let amtInput = parseFloat(document.getElementById('tx-amt').value);
     let type = document.getElementById('tx-type').value;
     let ref = document.getElementById('tx-ref').value.toUpperCase();
+    const refId = navigator.onLine ? generateRefId() : ('OFFLINE-' + Math.floor(1000 + Math.random() * 9000));
     
-    // Automatically map negative amounts to Debit (DR)
     if (amtInput < 0) {
       type = 'DR';
       amtInput = Math.abs(amtInput);
@@ -874,10 +1014,10 @@ async function processTx(e) {
 
     let acc = db.accounts.find(a => a.accountNumber === accNo);
 
-    // If account does not exist anywhere, record rejection in audit ledger
     if (!acc) {
       db.ledger.unshift({ 
         seq: db.ledger.length+1, 
+        refId: refId,
         date: new Date().toLocaleDateString(), 
         time: new Date().toLocaleTimeString(), 
         ip: currentClientIP, 
@@ -885,10 +1025,10 @@ async function processTx(e) {
         type: 'REJECTED_' + type, 
         amount: amtInput, 
         operator: session ? session.id : 'GUEST', 
-        narrative: `REJECTED: ACCOUNT DOES NOT EXIST (${ref})` 
+        narrative: `REJECTED: ACCOUNT DOES NOT EXIST (${ref}) [REF: ${refId}]` 
       });
       save();
-      showTaskFeedback('tx-task-feedback', 'DECLINED', `REJECTED: ACCOUNT ${accNo} DOES NOT EXIST. LOGGED IN AUDIT.`);
+      showTaskFeedback('tx-task-feedback', 'DECLINED', `REJECTED: ACCOUNT ${accNo} DOES NOT EXIST. REF ID: ${refId}`);
       document.getElementById('tx-amt').value=''; 
       document.getElementById('tx-ref').value='';
       return;
@@ -897,6 +1037,7 @@ async function processTx(e) {
     if (type === 'DR' && acc.balance < amtInput) {
       db.ledger.unshift({ 
         seq: db.ledger.length+1, 
+        refId: refId,
         date: new Date().toLocaleDateString(), 
         time: new Date().toLocaleTimeString(), 
         ip: currentClientIP, 
@@ -904,10 +1045,10 @@ async function processTx(e) {
         type: 'REJECTED_DR', 
         amount: amtInput, 
         operator: session ? session.id : 'GUEST', 
-        narrative: `REJECTED: INSUFFICIENT BALANCE (${ref})` 
+        narrative: `REJECTED: INSUFFICIENT BALANCE (${ref}) [REF: ${refId}]` 
       });
       save();
-      showTaskFeedback('tx-task-feedback', 'DECLINED', 'DECLINED: INSUFFICIENT BALANCE FOR DEBIT. LOGGED IN AUDIT.');
+      showTaskFeedback('tx-task-feedback', 'DECLINED', `DECLINED: INSUFFICIENT BALANCE. REF ID: ${refId}`);
       return;
     }
 
@@ -915,11 +1056,27 @@ async function processTx(e) {
     if(type === 'DR') acc.balance -= amtInput;
     acc.lastAccessed = new Date().toLocaleString();
     
-    db.ledger.unshift({ seq: db.ledger.length+1, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo, type, amount: amtInput, operator: session ? session.id : 'GUEST', narrative: ref }); 
+    db.ledger.unshift({ 
+      seq: db.ledger.length+1, 
+      refId: refId,
+      date: new Date().toLocaleDateString(), 
+      time: new Date().toLocaleTimeString(), 
+      ip: currentClientIP, 
+      accNo, 
+      type, 
+      amount: amtInput, 
+      operator: session ? session.id : 'GUEST', 
+      narrative: `${ref} [REF: ${refId}]` 
+    }); 
     save(); 
     autoFetch();
 
-    showTaskFeedback('tx-task-feedback', 'SUCCESS', `TRANSACTION SUCCESSFUL. ${type} OF ${amtInput.toFixed(2)} POSTED. NEW BAL: ${acc.balance.toFixed(2)}`);
+    let smsAlertText = '';
+    if (db.settings && db.settings.smsEnabled !== false && smsPermissionGranted) {
+      smsAlertText = ` [SMS SENT TO ${acc.phone}]`;
+    }
+
+    showTaskFeedback('tx-task-feedback', 'SUCCESS', `TRANSACTION SUCCESSFUL. ${type} OF ${amtInput.toFixed(2)} POSTED. NEW BAL: ${acc.balance.toFixed(2)} | REF: ${refId}${smsAlertText}`);
     document.getElementById('tx-amt').value=''; 
     document.getElementById('tx-ref').value='';
   }, 400);
@@ -935,15 +1092,15 @@ function loadPassbookData() {
   const acc = db.accounts.find(a => a.accountNumber === accNo);
   if (!acc) {
     infoField.value = 'ACCOUNT NOT FOUND';
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO ACCOUNT MATCHED</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">NO ACCOUNT MATCHED</td></tr>';
     return;
   }
   
-  infoField.value = `${acc.holderName} | BAL: ${acc.balance.toFixed(2)} | PH: ${acc.phone}`;
+  infoField.value = `${acc.holderName} | BAL: ${acc.balance.toFixed(2)} | PH: ${acc.phone} | REF: ${acc.refId || 'N/A'}`;
   
   const filteredLedger = db.ledger.filter(l => l.accNo === accNo);
   if (!filteredLedger.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO TRANSACTION HISTORY FOR THIS A/C</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">NO TRANSACTION HISTORY FOR THIS A/C</td></tr>';
     return;
   }
   
@@ -955,18 +1112,29 @@ function loadPassbookData() {
     } else if (l.type === 'DR') {
       runningBal -= (l.amount || 0);
     }
-    return { ...l, runningBal };
+    let d = l.date;
+    let t = l.time;
+    if ((!d || !t) && l.timestamp) {
+      const parts = l.timestamp.split(',');
+      if (parts.length >= 2) {
+        d = parts[0].trim();
+        t = parts[1].trim();
+      } else {
+        t = l.timestamp;
+      }
+    }
+    return { ...l, displayDate: d || 'N/A', displayTime: t || 'N/A', runningBal };
   });
 
   withBalances.reverse().forEach(l => {
     const amtColor = l.type === 'CR' ? '#00ff00' : '#ffffff';
     tbody.innerHTML += `
       <tr>
-        <td>${l.date || 'N/A'}</td>
-        <td>${l.time || 'N/A'}</td>
-        <td>${l.ip || 'N/A'}</td>
+        <td class="print-col-date">${l.displayDate}</td>
+        <td class="print-col-time">${l.displayTime}</td>
+        <td class="print-col-ip">${l.ip || 'N/A'}</td>
         <td class="bold" style="color: ${amtColor};">${l.type}</td>
-        <td>${l.narrative || 'STANDARD TRANSACTION'}</td>
+        <td class="print-col-desc">${l.narrative || 'STANDARD TRANSACTION'}</td>
         <td class="bold">${l.amount ? l.amount.toFixed(2) : '0.00'}</td>
         <td class="bold">${l.runningBal.toFixed(2)}</td>
       </tr>`;
@@ -974,8 +1142,15 @@ function loadPassbookData() {
 }
 
 function toggleDebitSetting() {
-  if(!db.settings) db.settings = { onlineDebitOnly: false };
+  if(!db.settings) db.settings = { onlineDebitOnly: false, smsEnabled: true };
   db.settings.onlineDebitOnly = !db.settings.onlineDebitOnly;
+  save();
+  renderAdmin();
+}
+
+function toggleSmsGlobalSetting() {
+  if(!db.settings) db.settings = { onlineDebitOnly: false, smsEnabled: true };
+  db.settings.smsEnabled = !db.settings.smsEnabled;
   save();
   renderAdmin();
 }
@@ -988,12 +1163,33 @@ function renderAdmin() {
     btn.style.borderColor = isOnlineOnly ? '#00ff00' : '#ffffff';
   }
 
+  const btnSms = document.getElementById('btn-toggle-sms');
+  if(btnSms) {
+    const isSmsOn = db.settings && db.settings.smsEnabled !== false;
+    btnSms.innerText = isSmsOn ? 'ON (SMS ACTIVE)' : 'OFF (SMS MUTED)';
+    btnSms.style.borderColor = isSmsOn ? '#00ff00' : '#ff4444';
+  }
+
   const pUsersBody = document.getElementById('body-pending-users'); pUsersBody.innerHTML = '';
   const pendingUsers = db.users.filter(u => u.status === 'PENDING');
-  if(!pendingUsers.length) { pUsersBody.innerHTML = '<tr><td colspan="3" style="text-align:center;">NO PENDING</td></tr>'; }
+  if(!pendingUsers.length) { pUsersBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">NO PENDING REGISTRATIONS</td></tr>'; }
   else {
     pendingUsers.forEach(u => {
-      pUsersBody.innerHTML += `<tr><td class="bold">${u.id}</td><td>${u.phone}</td><td>${u.status}</td></tr>`;
+      pUsersBody.innerHTML += `
+        <tr>
+          <td class="bold">${u.id}</td>
+          <td>${u.phone}</td>
+          <td>
+            <select id="role-sel-${u.id}">
+              <option value="OPERATOR" selected>OPERATOR</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+          </td>
+          <td>
+            <button onclick="approveUserWithRole('${u.id}')">APPROVE</button> 
+            <button onclick="rejectUser('${u.id}')" style="border-color:#ff4444; color:#ff4444;">REJECT</button>
+          </td>
+        </tr>`;
     });
   }
 
@@ -1001,7 +1197,7 @@ function renderAdmin() {
   if(!db.editRequests || !db.editRequests.length) { pEditsBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">NO PENDING REQUESTS</td></tr>'; }
   else {
     db.editRequests.forEach((req, idx) => {
-      pEditsBody.innerHTML += `<tr><td>${req.id}</td><td class="bold">${req.accNo}</td><td>${req.type}</td><td>BY: ${req.operator}</td></tr>`;
+      pEditsBody.innerHTML += `<tr><td>${req.id}</td><td class="bold">${req.accNo}</td><td>${req.type}</td><td>BY: ${req.operator} [REF: ${req.refId || 'N/A'}]</td></tr>`;
     });
   }
 
@@ -1009,6 +1205,23 @@ function renderAdmin() {
   db.users.forEach((u) => {
     uBody.innerHTML+=`<tr><td class="bold">${u.id}</td><td>${u.role}</td><td>${u.status}</td><td class="dim">${u.lastIp || 'N/A'}</td></tr>`;
   });
+}
+
+function approveUserWithRole(uid) {
+  const u = db.users.find(x => x.id === uid);
+  const roleSelect = document.getElementById('role-sel-' + uid);
+  if (u) {
+    u.status = 'ACTIVE';
+    if (roleSelect) u.role = roleSelect.value;
+    save();
+    renderAdmin();
+  }
+}
+
+function rejectUser(uid) {
+  db.users = db.users.filter(x => x.id !== uid);
+  save();
+  renderAdmin();
 }
 
 function openSearchModal(){ document.getElementById('search-modal').style.display='flex'; runSearch(); }
@@ -1020,7 +1233,7 @@ async function runSearch() {
   const tb = document.getElementById('search-results-body'); 
   
   if (!q) {
-    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;">ENTER A QUERY TO SEARCH ACCOUNTS ON-DEMAND</td></tr>';
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;">ENTER A QUERY OR REFERENCE ID TO TRACK RECORD</td></tr>';
     return;
   }
 
@@ -1030,29 +1243,52 @@ async function runSearch() {
     await backgroundSync(false);
   }
 
-  let m = db.accounts.filter(a => {
-    if(c === 'accNo') return a.accountNumber.includes(q);
-    if(c === 'mobile') return a.phone.includes(q);
-    if(c === 'name') return a.holderName.includes(q);
-    return false;
-  });
+  let m = [];
+  if (c === 'ref') {
+    const matchLedger = db.ledger.filter(l => l.refId && l.refId.toUpperCase().includes(q));
+    matchLedger.forEach(l => {
+      m.push({
+        refId: l.refId,
+        accountNumber: l.accNo,
+        title: `LEDGER ENTRY [${l.type}]`,
+        detail: l.narrative || 'N/A',
+        amount: l.amount || 0
+      });
+    });
+  } else {
+    let matchedAccs = db.accounts.filter(a => {
+      if(c === 'accNo') return a.accountNumber.includes(q);
+      if(c === 'mobile') return a.phone.includes(q);
+      if(c === 'name') return a.holderName.includes(q);
+      return false;
+    });
+    matchedAccs.forEach(a => {
+      m.push({
+        refId: a.refId || 'N/A',
+        accountNumber: a.accountNumber,
+        title: `HOLDER: ${a.holderName}`,
+        detail: `FATHER: ${a.fatherName} | PH: ${a.phone}`,
+        amount: a.balance
+      });
+    });
+  }
 
   tb.innerHTML = '';
   if(!m.length){ 
-    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO MATCH FOUND IN CLOUD OR LOCAL STORAGE</td></tr>'; 
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO RECORD FOUND MATCHING REFERENCE ID / QUERY</td></tr>'; 
     return; 
   }
   
-  m.forEach(a => {
+  m.forEach(item => {
     tb.innerHTML += `
       <tr>
-        <td class="bold">${a.accountNumber}</td>
-        <td><strong>NAME:</strong> ${a.holderName}<br><span class="dim">FATHER:</span> ${a.fatherName}</td>
-        <td>PH: ${a.phone}</td>
-        <td class="bold">${a.balance.toFixed(2)}</td>
+        <td class="bold">${item.refId}</td>
+        <td><strong>${item.title}</strong><br><span class="dim">${item.detail}</span></td>
+        <td>RECORDED</td>
+        <td class="bold">${typeof item.amount === 'number' ? item.amount.toFixed(2) : item.amount}</td>
         <td>
-          <button onclick="useSearch('${a.accountNumber}')">USE</button>
-          <button onclick="viewAccountHistory('${a.accountNumber}')" title="History">📜</button>
+          <button onclick="useSearch('${item.accountNumber}')">USE</button>
+          <button onclick="viewAccountHistory('${item.accountNumber}')" title="History">📜</button>
         </td>
       </tr>`;
   });
@@ -1077,13 +1313,36 @@ function syncUI() {
   if(jb) {
     jb.innerHTML = '';
     db.ledger.slice(0, 50).forEach(l => {
-      jb.innerHTML += `<tr><td>${l.seq}</td><td>${l.date || 'N/A'}</td><td>${l.time || 'N/A'}</td><td>${l.ip || 'N/A'}</td><td class="bold">${l.accNo || 'SYS'}</td><td>${l.type}</td><td>${l.amount ? l.amount.toFixed(2) : '0.00'} (${l.narrative})</td><td class="dim">${l.operator}</td></tr>`;
+      let d = l.date;
+      let t = l.time;
+      if ((!d || !t) && l.timestamp) {
+        const parts = l.timestamp.split(',');
+        if (parts.length >= 2) {
+          d = parts[0].trim();
+          t = parts[1].trim();
+        } else {
+          t = l.timestamp;
+        }
+      }
+      jb.innerHTML += `<tr><td>${l.seq}</td><td class="bold">${l.refId || 'N/A'}</td><td class="print-col-date">${d || 'N/A'}</td><td class="print-col-time">${t || 'N/A'}</td><td class="print-col-ip">${l.ip || 'N/A'}</td><td class="bold">${l.accNo || 'SYS'}</td><td>${l.type}</td><td class="print-col-desc">${l.amount ? l.amount.toFixed(2) : '0.00'} (${l.narrative})</td><td class="dim">${l.operator}</td></tr>`;
     });
   }
 }
 
-// Customized print helper honoring individual toggle boxes for Date, Time, IP, and Description
+function togglePrintMeta(pageId) {
+  const showDate = document.getElementById('chk-date-' + pageId)?.checked ?? true;
+  const showTime = document.getElementById('chk-time-' + pageId)?.checked ?? true;
+  const showIp = document.getElementById('chk-ip-' + pageId)?.checked ?? true;
+  const showDesc = document.getElementById('chk-desc-' + pageId)?.checked ?? true;
+
+  document.body.classList.toggle('hide-date', !showDate);
+  document.body.classList.toggle('hide-time', !showTime);
+  document.body.classList.toggle('hide-ip', !showIp);
+  document.body.classList.toggle('hide-desc', !showDesc);
+}
+
 function triggerPrint(pageId) {
+  togglePrintMeta(pageId);
   const headerDiv = document.getElementById('print-header-' + pageId);
   if (headerDiv) {
     const showDate = document.getElementById('chk-date-' + pageId)?.checked ?? true;
