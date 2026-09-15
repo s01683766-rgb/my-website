@@ -1,17 +1,23 @@
-// main.js - Handles CockroachDB synchronization for pray73
+// Replace this URL with your actual live Cloudflare Worker URL
+const CLOUDWATCH_API_URL = 'https://your-cloudflare-worker-name.your-subdomain.workers.dev';
 
+// 1. Function to LOAD data from Cloudflare Worker / CockroachDB when Netlify opens
 async function loadTerminalData() {
   try {
-    const response = await fetch('/api/terminal-data?user_path=pray73', {
+    const response = await fetch(`${CLOUDWATCH_API_URL}/?user_path=pray73`, {
       method: 'GET',
-      headers: { 'x-api-key': 'CRIS_SECURE_998877' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-api-key': 'CRIS_SECURE_998877' 
+      }
     });
+    
     const result = await response.json();
     const accountsList = result.accounts || [];
     
-    console.log("Loaded accounts from database:", accountsList);
+    console.log("Loaded accounts from Cloudflare bridge:", accountsList);
     
-    // If you have a render function in your index.html, call it here:
+    // Calls your existing HTML screen render function if available
     if (typeof renderAccounts === 'function') {
       renderAccounts(accountsList);
     }
@@ -21,24 +27,29 @@ async function loadTerminalData() {
   }
 }
 
+// 2. Function to SAVE updates back through the Cloudflare bridge
 async function saveTerminalData(updatedAccountsArray) {
   try {
-    const response = await fetch('/api/terminal-data', {
+    const response = await fetch(CLOUDWATCH_API_URL, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
         'x-api-key': 'CRIS_SECURE_998877' 
       },
-      body: JSON.stringify({ accounts: updatedAccountsArray })
+      body: JSON.stringify({ 
+        user_path: 'pray73',
+        accounts: updatedAccountsArray 
+      })
     });
+    
     const resData = await response.json();
-    console.log("Saved successfully:", resData);
+    console.log("Saved successfully via Cloudflare:", resData);
   } catch (err) {
     console.error("Error saving terminal data:", err);
   }
 }
 
-// Automatically load data when the page finishes opening
+// Automatically load the data as soon as the Netlify page finishes opening
 window.addEventListener('DOMContentLoaded', () => {
   loadTerminalData();
 });
