@@ -1,26 +1,36 @@
+// REPLACE THIS STRING WITH YOUR ACTUAL LIVE CLOUDFLARE WORKER URL
 const CLOUDWATCH_API_URL = 'https://your-cloudflare-worker-name.your-subdomain.workers.dev';
 
-let allCachedAccounts = [];
+// Default initial data including your test record (Ragh, mobile: 9876543210, amount: 6900)
+let allCachedAccounts = [
+  {
+    id: "REF-2026-001",
+    name: "Ragh",
+    mobile: "9876543210",
+    email: "ragh@example.com",
+    amount: 6900,
+    type: "credit",
+    subject: "Initial Ledger Entry",
+    who: "Self",
+    how: "Cash/Direct",
+    accountOpeningDate: "2026-09-15",
+    timestamp: "2026-09-15 15:00:00",
+    seconds: new Date().toISOString()
+  }
+];
 
 // --- FORMAT VALIDATION HELPERS ---
 function isValidMobile(mobile) {
-  // Strictly checks for exactly 10 numerical digits (e.g., 6900998877)
-  const mobileRegex = /^\d{10}$/;
+  const mobileRegex = /^\d{10}$/; // Exactly 10 numerical digits
   return mobileRegex.test(String(mobile).trim());
 }
 
 function isValidEmail(email) {
-  // Standard email format validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(String(email).trim());
 }
 
-function isValidNumeric(val) {
-  // Ensures account or reference numbers contain only digits
-  const numRegex = /^\d+$/;
-  return numRegex.test(String(val).trim());
-}
-
+// --- 1. LOAD DATA FROM CLOUDWATCH / COCKROACHDB BRIDGE ---
 async function loadTerminalData() {
   try {
     const response = await fetch(`${CLOUDWATCH_API_URL}/?user_path=pray73`, {
@@ -34,55 +44,62 @@ async function loadTerminalData() {
     const result = await response.json();
     let accountsList = result.accounts || [];
     
-    allCachedAccounts = accountsList.map((item, index) => {
-      const now = new Date();
-      return {
-        id: item.id || item.refNo || `REF-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}-${index + 1}`,
-        name: item.name || item.customerName || "Unknown",
-        mobile: item.mobile || item.phone || "",
-        email: item.email || "",
-        amount: item.amount !== undefined ? item.amount : (item.balance || 0),
-        type: item.type || "credit",
-        subject: item.subject || "General Transaction",
-        who: item.who || "Self",
-        how: item.how || "Cash/Direct",
-        accountOpeningDate: item.accountOpeningDate || now.toISOString().split('T')[0],
-        timestamp: item.timestamp || now.toLocaleString(),
-        seconds: item.seconds || now.toISOString()
-      };
-    });
+    // If database returned records, normalize and use them; otherwise use the local fallback test record
+    if (accountsList && accountsList.length > 0) {
+      allCachedAccounts = accountsList.map((item, index) => {
+        const now = new Date();
+        return {
+          id: item.id || item.refNo || `REF-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}-${index + 1}`,
+          name: item.name || item.customerName || "Unknown",
+          mobile: item.mobile || item.phone || "",
+          email: item.email || "",
+          amount: item.amount !== undefined ? item.amount : (item.balance || 0),
+          type: item.type || "credit",
+          subject: item.subject || "General Transaction",
+          who: item.who || "Self",
+          how: item.how || "Cash/Direct",
+          accountOpeningDate: item.accountOpeningDate || now.toISOString().split('T')[0],
+          timestamp: item.timestamp || now.toLocaleString(),
+          seconds: item.seconds || now.toISOString()
+        };
+      });
+    }
+    
+    console.log("Loaded records:", allCachedAccounts);
     
     if (typeof renderAccounts === 'function') {
       renderAccounts(allCachedAccounts);
     }
     return allCachedAccounts;
   } catch (err) {
-    console.error("Error loading terminal data:", err);
+    console.error("Error loading terminal data (using fallback):", err);
+    if (typeof renderAccounts === 'function') {
+      renderAccounts(allCachedAccounts);
+    }
   }
 }
 
-// STRICT SAVE FUNCTION WITH VALIDATION
+// --- 2. SAVE DATA WITH STRICT FORMAT VALIDATION ---
 async function saveTerminalData(newAccountEntry) {
   try {
-    // 1. Validate Mobile (Must be 10 digits numerical)
+    // Validate mobile (Must be exactly 10 digits)
     if (!isValidMobile(newAccountEntry.mobile)) {
       alert("Validation Error: Mobile number must be exactly 10 numerical digits.");
       return false;
     }
 
-    // 2. Validate Email if provided
+    // Validate email if provided
     if (newAccountEntry.email && !isValidEmail(newAccountEntry.email)) {
       alert("Validation Error: Please enter a valid email address format.");
       return false;
     }
 
-    // 3. Validate Amount / Account numbers if numerical
+    // Validate amount
     if (newAccountEntry.amount === undefined || isNaN(newAccountEntry.amount)) {
       alert("Validation Error: Amount must be a valid number.");
       return false;
     }
 
-    // Push into cached list and send to Cloudflare Worker bridge
     allCachedAccounts.push(newAccountEntry);
 
     const response = await fetch(CLOUDWATCH_API_URL, {
@@ -98,7 +115,7 @@ async function saveTerminalData(newAccountEntry) {
     });
     
     const resData = await response.json();
-    console.log("Saved successfully with validated formats:", resData);
+    console.log("Saved successfully:", resData);
     return true;
   } catch (err) {
     console.error("Error saving terminal data:", err);
@@ -106,7 +123,7 @@ async function saveTerminalData(newAccountEntry) {
   }
 }
 
-// STRICT SEARCH FUNCTION (Full Account / Mobile Number match required)
+// --- 3. STRICT SEARCH FILTER (Requires full 10-digit mobile or ID match) ---
 function setupStrictSearch(searchInputId, resultContainerId) {
   const searchInput = document.getElementById(searchInputId);
   const resultContainer = document.getElementById(resultContainerId);
@@ -116,9 +133,11 @@ function setupStrictSearch(searchInputId, resultContainerId) {
   searchInput.addEventListener('input', (e) => {
     const searchValue = e.target.value.trim();
 
-    // Requires full length (e.g. 10 digits for mobile or exact ID match) before pulling records
+    // Requires complete 10 digits before rendering data
     if (searchValue.length < 10) {
-      if (resultContainer) resultContainer.innerHTML = "<p>Please enter the full 10-digit mobile or account number to view data.</p>";
+      if (resultContainer) {
+        resultContainer.innerHTML = "<p>Please enter the full 10-digit mobile or account number to view data.</p>";
+      }
       return;
     }
 
@@ -127,7 +146,9 @@ function setupStrictSearch(searchInputId, resultContainerId) {
     );
 
     if (matchedRecords.length === 0) {
-      if (resultContainer) resultContainer.innerHTML = "<p>No matching record found.</p>";
+      if (resultContainer) {
+        resultContainer.innerHTML = "<p>No matching record found for this full account number.</p>";
+      }
     } else {
       if (typeof renderAccounts === 'function') {
         renderAccounts(matchedRecords);
@@ -136,6 +157,7 @@ function setupStrictSearch(searchInputId, resultContainerId) {
   });
 }
 
+// --- INITIALIZE ON PAGE LOAD ---
 window.addEventListener('DOMContentLoaded', () => {
   loadTerminalData();
   setupStrictSearch('search-input', 'accounts-container');
