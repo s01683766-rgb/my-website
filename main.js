@@ -1,5 +1,5 @@
-// REPLACE THIS STRING WITH YOUR ACTUAL LIVE CLOUDFLARE WORKER URL
-const CLOUDWATCH_API_URL = 'https://your-cloudflare-worker-name.your-subdomain.workers.dev';
+// Your live Cloudflare Worker URL bridge
+const CLOUDWATCH_API_URL = 'https://cris-backend-worker.s01683766.workers.dev';
 
 // Default initial data including your test record (Ragh, mobile: 9876543210, amount: 6900)
 let allCachedAccounts = [
@@ -44,7 +44,6 @@ async function loadTerminalData() {
     const result = await response.json();
     let accountsList = result.accounts || [];
     
-    // If database returned records, normalize and use them; otherwise use the local fallback test record
     if (accountsList && accountsList.length > 0) {
       allCachedAccounts = accountsList.map((item, index) => {
         const now = new Date();
@@ -82,19 +81,16 @@ async function loadTerminalData() {
 // --- 2. SAVE DATA WITH STRICT FORMAT VALIDATION ---
 async function saveTerminalData(newAccountEntry) {
   try {
-    // Validate mobile (Must be exactly 10 digits)
     if (!isValidMobile(newAccountEntry.mobile)) {
       alert("Validation Error: Mobile number must be exactly 10 numerical digits.");
       return false;
     }
 
-    // Validate email if provided
     if (newAccountEntry.email && !isValidEmail(newAccountEntry.email)) {
       alert("Validation Error: Please enter a valid email address format.");
       return false;
     }
 
-    // Validate amount
     if (newAccountEntry.amount === undefined || isNaN(newAccountEntry.amount)) {
       alert("Validation Error: Amount must be a valid number.");
       return false;
@@ -133,7 +129,6 @@ function setupStrictSearch(searchInputId, resultContainerId) {
   searchInput.addEventListener('input', (e) => {
     const searchValue = e.target.value.trim();
 
-    // Requires complete 10 digits before rendering data
     if (searchValue.length < 10) {
       if (resultContainer) {
         resultContainer.innerHTML = "<p>Please enter the full 10-digit mobile or account number to view data.</p>";
