@@ -1,4 +1,4 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -441,7 +441,7 @@ deviceFingerprint = getDeviceFingerprint();
 
 async function fetchClientIP() {
   try {
-    const res = await fetch('https://api.ipify.org?format=json');
+    const res = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
     const data = await res.json();
     currentClientIP = data.ip;
     const ipTag = document.getElementById('ip-tag');
@@ -584,6 +584,12 @@ async function backgroundSync(isInitial = false) {
 async function pushDataToServerSilent() {
   if (!navigator.onLine) return;
   try {
+    await fetchClientIP();
+    if (session) {
+      const u = db.users.find(x => x.id === session.id);
+      if (u) u.lastIp = currentClientIP;
+    }
+
     if (isCloudflare && supabaseClient) {
       await supabaseClient
         .from('terminal_store')
@@ -608,6 +614,12 @@ async function pushDataToServer() {
   if (syncTag) syncTag.innerText = 'UPLOADING...';
 
   try {
+    await fetchClientIP();
+    if (session) {
+      const u = db.users.find(x => x.id === session.id);
+      if (u) u.lastIp = currentClientIP;
+    }
+
     let success = false;
     if (isCloudflare && supabaseClient) {
       const { error } = await supabaseClient
@@ -636,6 +648,7 @@ async function pushDataToServer() {
 }
 
 async function init() {
+  await fetchClientIP();
   const local = migrateLegacyData();
   if (local) {
     try { db = JSON.parse(local); } catch(e) {}
@@ -650,6 +663,7 @@ async function init() {
       if (u && u.status === 'ACTIVE') {
         if (!u.deviceFp) u.deviceFp = deviceFingerprint;
         if (u.deviceFp === deviceFingerprint) {
+          u.lastIp = currentClientIP;
           setTimeout(() => {
             document.getElementById('session-tag').innerText = `${u.id} [${u.role}]`;
             document.getElementById('app-nav').style.display = 'grid';
@@ -675,6 +689,10 @@ async function init() {
 }
 
 function save() { 
+  if (session) {
+    const u = db.users.find(x => x.id === session.id);
+    if (u) u.lastIp = currentClientIP;
+  }
   localStorage.setItem(DB_KEY, JSON.stringify(db)); 
   if(session) localStorage.setItem(DB_KEY + '_SESSION', JSON.stringify(session));
   if (session) syncUI(); 
@@ -716,9 +734,10 @@ async function requestSmsBrowserPermission() {
   }
 }
 
-function handleLogon(e) {
+async function handleLogon(e) {
   e.preventDefault(); 
   showLoadingFeedback('login-task-feedback');
+  await fetchClientIP();
   
   setTimeout(() => {
     const uid=document.getElementById('inp-uid').value.trim().toUpperCase(), pin=document.getElementById('inp-pin').value.trim();
@@ -748,7 +767,8 @@ function handleOnlineReg(e) {
   e.preventDefault();
   showLoadingFeedback('reg-task-feedback');
 
-  setTimeout(() => {
+  setTimeout(async () => {
+    await fetchClientIP();
     const uid = document.getElementById('reg-uid').value.trim().toUpperCase();
     const pin = document.getElementById('reg-pin').value.trim();
     const phone = document.getElementById('reg-phone').value.trim().replace(/[^0-9]/g,'');
@@ -766,7 +786,8 @@ function adminCreateUser(e) {
   e.preventDefault();
   showLoadingFeedback('admin-create-task-feedback');
 
-  setTimeout(() => {
+  setTimeout(async () => {
+    await fetchClientIP();
     const uid = document.getElementById('admin-new-uid').value.trim().toUpperCase();
     const pin = document.getElementById('admin-new-pin').value.trim();
     const phone = document.getElementById('admin-new-phone').value.trim().replace(/[^0-9]/g,'');
@@ -825,6 +846,7 @@ function getSerial() {
 async function importMultipleContacts() {
   if (!('contacts' in navigator && 'ContactsManager' in window)) { alert('DEVICE CONTACT API NOT SUPPORTED. USE .VCF IMPORT.'); return; }
   try {
+    await fetchClientIP();
     const contacts = await navigator.contacts.select(['name','tel','email','address'], { multiple:true });
     if(!contacts || !contacts.length) return; 
     let added = 0;
@@ -852,7 +874,8 @@ function processVCF(e) {
   const fileInput = e.target; 
   if (!fileInput.files.length) return;
   const reader = new FileReader();
-  reader.onload = function(ev) {
+  reader.onload = async function(ev) {
+    await fetchClientIP();
     const text = ev.target.result; 
     const cards = text.split('BEGIN:VCARD'); 
     let added = 0;
@@ -886,7 +909,8 @@ function manualAccount(e) {
   e.preventDefault(); 
   showLoadingFeedback('acc-task-feedback');
 
-  setTimeout(() => {
+  setTimeout(async () => {
+    await fetchClientIP();
     const phone = document.getElementById('acc-phone').value.trim().replace(/[^0-9]/g,'');
     const accNo = getSerial();
     const isPending = session && session.status === 'PENDING';
@@ -939,7 +963,8 @@ function saveAccEdit(e) {
   if(!editingAccNo) return;
   showLoadingFeedback('edit-task-feedback');
 
-  setTimeout(() => {
+  setTimeout(async () => {
+    await fetchClientIP();
     const updatedData = {
       accountNumber: editingAccNo,
       holderName: document.getElementById('edit-name').value.trim().toUpperCase(),
@@ -971,7 +996,8 @@ function saveAccEdit(e) {
   }, 400);
 }
 
-function requestDeleteAccount(accNo) {
+async function requestDeleteAccount(accNo) {
+  await fetchClientIP();
   const refId = navigator.onLine ? generateRefId() : ('OFFLINE-' + Math.floor(1000 + Math.random() * 9000));
   if(session && session.role === 'ADMIN') {
     if(confirm(`DELETE ACCOUNT ${accNo}? [REF: ${refId}]`)) {
@@ -1037,6 +1063,7 @@ async function processTx(e) {
   showLoadingFeedback('tx-task-feedback');
 
   setTimeout(async () => {
+    await fetchClientIP();
     let accNo = document.getElementById('tx-acc').value.trim();
     let amtInput = parseFloat(document.getElementById('tx-amt').value);
     let type = document.getElementById('tx-type').value;
@@ -1423,6 +1450,7 @@ function updateNet() {
   const tag = document.getElementById('net-status-tag');
   if(navigator.onLine){ 
     tag.innerText='ONLINE'; tag.style.color='#ffffff'; 
+    fetchClientIP();
     backgroundSync(false);
   } else { 
     tag.innerText='OFFLINE'; tag.style.color='#888888'; 
@@ -1430,7 +1458,9 @@ function updateNet() {
     if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
   }
 }
-window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet); 
+window.addEventListener('online', updateNet); 
+window.addEventListener('offline', updateNet);
+window.addEventListener('focus', () => { fetchClientIP(); });
 
 document.addEventListener('DOMContentLoaded', () => {
   fetchClientIP();
