@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -117,6 +117,9 @@
       #fixed-search-hud button { width: 100%; padding: 12px; font-size: 1rem; border: 1px dashed var(--fg); }
     }
   </style>
+
+  <!-- Include Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -411,10 +414,20 @@ let currentClientIP = 'FETCHING...';
 let deviceFingerprint = '';
 let isSyncing = false;
 
-// DYNAMIC BACKEND ROUTER: Uses Cloudflare Pages function on pages.dev, Netlify function on netlify.app
-const API_ENDPOINT = window.location.hostname.includes('pages.dev') 
-  ? '/api/save-data' 
-  : '/.netlify/functions/save-data';
+// DYNAMIC BACKEND ROUTER: Cloudflare/Supabase Bridge Integration
+const isCloudflare = window.location.hostname.includes('pages.dev') || window.location.hostname.includes('workers.dev');
+
+// Supabase Configuration using your provided URL and Anon Key
+const SUPABASE_URL = 'https://anwwhrtszdrjdmdrtvoi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFud3docnRzemRyamRtZHJ0dm9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NjgwODgsImV4cCI6MjEwNTE0NDA4OH0.DJb9igB0QftEZucScZsBnggUPK0-7Syjw9PLCUMFmqM';
+let supabaseClient = null;
+if (isCloudflare && window.supabase) {
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+const API_BASE_URL = isCloudflare 
+  ? 'https://cris-backend-worker.s01683766.workers.dev' 
+  : '';
 
 function getDeviceFingerprint() {
   let fp = localStorage.getItem('CRIS_DEVICE_FP');
@@ -495,51 +508,68 @@ async function backgroundSync(isInitial = false) {
     if (navigator.onLine) {
       if (syncTag && isInitial) syncTag.innerText = 'SYNCING...';
       
-      const res = await fetch(API_ENDPOINT, {
-        method: 'GET',
-        headers: { 'x-api-key': 'CRIS_SECURE_998877' }
-      });
+      let cloudData = null;
 
-      if (res.ok) {
-        const cloudData = await res.json();
-        if (cloudData && cloudData.users) {
-          const localStr = localStorage.getItem(DB_KEY);
-          if (localStr) {
-            try {
-              const localDb = JSON.parse(localStr);
-              if (localDb.accounts && cloudData.accounts) {
-                localDb.accounts.forEach(la => {
-                  if (!cloudData.accounts.some(ca => ca.accountNumber === la.accountNumber)) {
-                    cloudData.accounts.push(la);
-                  }
-                });
-              }
-              if (localDb.ledger && cloudData.ledger) {
-                localDb.ledger.forEach(ll => {
-                  if (!ll.refId || ll.refId.startsWith('OFFLINE-')) {
-                    ll.refId = generateRefId();
-                  }
-                  if (!cloudData.ledger.some(cl => cl.seq === ll.seq && cl.timestamp === ll.timestamp)) {
-                    cloudData.ledger.unshift(ll);
-                  }
-                });
-              }
-            } catch(e) {}
-          }
-
-          db = cloudData;
-          if(!db.editRequests) db.editRequests = [];
-          if(!db.users) db.users = [];
-          if(!db.accounts) db.accounts = [];
-          if(!db.ledger) db.ledger = [];
-          if(!db.settings) db.settings = { onlineDebitOnly: false, smsEnabled: true };
-          
-          localStorage.setItem(DB_KEY, JSON.stringify(db));
-          syncUI();
-          if (syncTag) syncTag.innerText = 'SYNCED [REAL-TIME]';
-          
-          pushDataToServerSilent();
+      // If running on Cloudflare, fetch via Supabase bridge for pray73 path
+      if (isCloudflare && supabaseClient) {
+        const { data, error } = await supabaseClient
+          .from('terminal_store')
+          .select('data')
+          .eq('user_path', 'pray73')
+          .single();
+        if (!error && data) {
+          cloudData = data.data;
         }
+      }
+
+      // Fallback to Netlify Worker endpoint if Supabase data isn't fetched directly
+      if (!cloudData) {
+        const res = await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
+          method: 'GET',
+          headers: { 'x-api-key': 'CRIS_SECURE_998877' }
+        });
+        if (res.ok) {
+          cloudData = await res.json();
+        }
+      }
+
+      if (cloudData && cloudData.users) {
+        const localStr = localStorage.getItem(DB_KEY);
+        if (localStr) {
+          try {
+            const localDb = JSON.parse(localStr);
+            if (localDb.accounts && cloudData.accounts) {
+              localDb.accounts.forEach(la => {
+                if (!cloudData.accounts.some(ca => ca.accountNumber === la.accountNumber)) {
+                  cloudData.accounts.push(la);
+                }
+              });
+            }
+            if (localDb.ledger && cloudData.ledger) {
+              localDb.ledger.forEach(ll => {
+                if (!ll.refId || ll.refId.startsWith('OFFLINE-')) {
+                  ll.refId = generateRefId();
+                }
+                if (!cloudData.ledger.some(cl => cl.seq === ll.seq && cl.timestamp === ll.timestamp)) {
+                  cloudData.ledger.unshift(ll);
+                }
+              });
+            }
+          } catch(e) {}
+        }
+
+        db = cloudData;
+        if(!db.editRequests) db.editRequests = [];
+        if(!db.users) db.users = [];
+        if(!db.accounts) db.accounts = [];
+        if(!db.ledger) db.ledger = [];
+        if(!db.settings) db.settings = { onlineDebitOnly: false, smsEnabled: true };
+        
+        localStorage.setItem(DB_KEY, JSON.stringify(db));
+        syncUI();
+        if (syncTag) syncTag.innerText = 'SYNCED [REAL-TIME]';
+        
+        pushDataToServerSilent();
       }
     } else {
       if (syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
@@ -554,11 +584,17 @@ async function backgroundSync(isInitial = false) {
 async function pushDataToServerSilent() {
   if (!navigator.onLine) return;
   try {
-    await fetch(API_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': 'CRIS_SECURE_998877' },
-      body: JSON.stringify(db)
-    });
+    if (isCloudflare && supabaseClient) {
+      await supabaseClient
+        .from('terminal_store')
+        .upsert({ user_path: 'pray73', data: db });
+    } else {
+      await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': 'CRIS_SECURE_998877' },
+        body: JSON.stringify(db)
+      });
+    }
   } catch(e) {}
 }
 
@@ -572,13 +608,22 @@ async function pushDataToServer() {
   if (syncTag) syncTag.innerText = 'UPLOADING...';
 
   try {
-    const response = await fetch(API_ENDPOINT, {
+    let success = false;
+    if (isCloudflare && supabaseClient) {
+      const { error } = await supabaseClient
+        .from('terminal_store')
+        .upsert({ user_path: 'pray73', data: db });
+      success = !error;
+    }
+
+    const response = await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': 'CRIS_SECURE_998877' },
       body: JSON.stringify(db)
     });
+    if (response.ok) success = true;
 
-    if (response.ok) {
+    if (success) {
       const now = new Date();
       const exactTime = now.toLocaleTimeString() + '.' + String(now.getMilliseconds()).padStart(3, '0');
       if (syncTag) syncTag.innerText = `SYNCED: [${exactTime}]`;
