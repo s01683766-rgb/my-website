@@ -411,10 +411,10 @@ let currentClientIP = 'FETCHING...';
 let deviceFingerprint = '';
 let isSyncing = false;
 
-// DYNAMIC BACKEND ROUTER: Cloudflare pages routes requests to Netlify backend securely
-const API_BASE_URL = window.location.hostname.includes('pages.dev') 
-  ? 'https://cris-backend-worker.s01683766.workers.dev' 
-  : '';
+// DYNAMIC BACKEND ROUTER: Uses Cloudflare Pages function on pages.dev, Netlify function on netlify.app
+const API_ENDPOINT = window.location.hostname.includes('pages.dev') 
+  ? '/api/save-data' 
+  : '/.netlify/functions/save-data';
 
 function getDeviceFingerprint() {
   let fp = localStorage.getItem('CRIS_DEVICE_FP');
@@ -495,7 +495,7 @@ async function backgroundSync(isInitial = false) {
     if (navigator.onLine) {
       if (syncTag && isInitial) syncTag.innerText = 'SYNCING...';
       
-      const res = await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
+      const res = await fetch(API_ENDPOINT, {
         method: 'GET',
         headers: { 'x-api-key': 'CRIS_SECURE_998877' }
       });
@@ -554,7 +554,7 @@ async function backgroundSync(isInitial = false) {
 async function pushDataToServerSilent() {
   if (!navigator.onLine) return;
   try {
-    await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
+    await fetch(API_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': 'CRIS_SECURE_998877' },
       body: JSON.stringify(db)
@@ -572,7 +572,7 @@ async function pushDataToServer() {
   if (syncTag) syncTag.innerText = 'UPLOADING...';
 
   try {
-    const response = await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
+    const response = await fetch(API_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': 'CRIS_SECURE_998877' },
       body: JSON.stringify(db)
