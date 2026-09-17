@@ -509,7 +509,7 @@ async function backgroundSync(isInitial = false) {
       
       let cloudData = null;
 
-      // Cloudflare / Supabase Bridge integration path (UPDATED TO cloudflare_user)
+      // Cloudflare / Supabase Bridge integration path (using cloudflare_user)
       if (isCloudflare && supabaseClient) {
         const { data, error } = await supabaseClient
           .from('terminal_store')
