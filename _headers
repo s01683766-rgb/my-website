@@ -1,0 +1,2 @@
+/*
+  Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://anwwhrtszdrjdmdrtvoi.supabase.co https://api.ipify.org;
