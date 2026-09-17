@@ -413,20 +413,13 @@ let currentClientIP = 'FETCHING...';
 let deviceFingerprint = '';
 let isSyncing = false;
 
-// DYNAMIC BACKEND ROUTER: Cloudflare/Supabase Bridge Integration
-const isCloudflare = window.location.hostname.includes('pages.dev') || window.location.hostname.includes('workers.dev');
-
-// Supabase Configuration matching your unified project keys
+// DYNAMIC BACKEND ROUTER: Direct Supabase Integration
 const SUPABASE_URL = 'https://anwwhrtszdrjdmdrtvoi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFud3docnRzemRyamRtZHJ0dm9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NjgwODgsImV4cCI6MjEwNTE0NDA4OH0.DJb9igB0QftEZucScZsBnggUPK0-7Syjw9PLCUMFmqM';
 let supabaseClient = null;
-if (isCloudflare && window.supabase) {
+if (window.supabase) {
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
-
-const API_BASE_URL = isCloudflare 
-  ? 'https://cris-backend-worker.s01683766.workers.dev' 
-  : '';
 
 function getDeviceFingerprint() {
   let fp = localStorage.getItem('CRIS_DEVICE_FP');
@@ -509,8 +502,8 @@ async function backgroundSync(isInitial = false) {
       
       let cloudData = null;
 
-      // Cloudflare / Supabase Bridge integration path (using cloudflare_user)
-      if (isCloudflare && supabaseClient) {
+      // Direct Supabase Bridge integration path (using cloudflare_user path row)
+      if (supabaseClient) {
         const { data, error } = await supabaseClient
           .from('terminal_store')
           .select('data')
@@ -518,17 +511,6 @@ async function backgroundSync(isInitial = false) {
           .single();
         if (!error && data) {
           cloudData = data.data;
-        }
-      }
-
-      // Netlify Worker fallback endpoint
-      if (!cloudData) {
-        const res = await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
-          method: 'GET',
-          headers: { 'X_API_KEY': 'CRIS_SECURE_998877' }
-        });
-        if (res.ok) {
-          cloudData = await res.json();
         }
       }
 
@@ -581,7 +563,7 @@ async function backgroundSync(isInitial = false) {
 }
 
 async function pushDataToServerSilent() {
-  if (!navigator.onLine) return;
+  if (!navigator.onLine || !supabaseClient) return;
   try {
     await fetchClientIP();
     if (session) {
@@ -589,17 +571,9 @@ async function pushDataToServerSilent() {
       if (u) u.lastIp = currentClientIP;
     }
 
-    if (isCloudflare && supabaseClient) {
-      await supabaseClient
-        .from('terminal_store')
-        .upsert({ user_path: 'cloudflare_user', data: db });
-    } else {
-      await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X_API_KEY': 'CRIS_SECURE_998877' },
-        body: JSON.stringify(db)
-      });
-    }
+    await supabaseClient
+      .from('terminal_store')
+      .upsert({ user_path: 'cloudflare_user', data: db }, { onConflict: 'user_path' });
   } catch(e) {}
 }
 
@@ -620,19 +594,12 @@ async function pushDataToServer() {
     }
 
     let success = false;
-    if (isCloudflare && supabaseClient) {
+    if (supabaseClient) {
       const { error } = await supabaseClient
         .from('terminal_store')
-        .upsert({ user_path: 'cloudflare_user', data: db });
+        .upsert({ user_path: 'cloudflare_user', data: db }, { onConflict: 'user_path' });
       if (!error) success = true;
     }
-
-    const response = await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X_API_KEY': 'CRIS_SECURE_998877' },
-      body: JSON.stringify(db)
-    });
-    if (response.ok) success = true;
 
     if (success) {
       const now = new Date();
