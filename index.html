@@ -118,7 +118,6 @@
     }
   </style>
 
-  <!-- Include Supabase JS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -417,7 +416,7 @@ let isSyncing = false;
 // DYNAMIC BACKEND ROUTER: Cloudflare/Supabase Bridge Integration
 const isCloudflare = window.location.hostname.includes('pages.dev') || window.location.hostname.includes('workers.dev');
 
-// Supabase Configuration using your provided URL and Anon Key
+// Supabase Configuration matching your unified project keys
 const SUPABASE_URL = 'https://anwwhrtszdrjdmdrtvoi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFud3docnRzemRyamRtZHJ0dm9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NjgwODgsImV4cCI6MjEwNTE0NDA4OH0.DJb9igB0QftEZucScZsBnggUPK0-7Syjw9PLCUMFmqM';
 let supabaseClient = null;
@@ -510,19 +509,19 @@ async function backgroundSync(isInitial = false) {
       
       let cloudData = null;
 
-      // If running on Cloudflare, fetch via Supabase bridge for pray73 path
+      // Cloudflare / Supabase Bridge integration path (UPDATED TO cloudflare_user)
       if (isCloudflare && supabaseClient) {
         const { data, error } = await supabaseClient
           .from('terminal_store')
           .select('data')
-          .eq('user_path', 'pray73')
+          .eq('user_path', 'cloudflare_user')
           .single();
         if (!error && data) {
           cloudData = data.data;
         }
       }
 
-      // Fallback to Netlify Worker endpoint if Supabase data isn't fetched directly
+      // Netlify Worker fallback endpoint
       if (!cloudData) {
         const res = await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
           method: 'GET',
@@ -593,7 +592,7 @@ async function pushDataToServerSilent() {
     if (isCloudflare && supabaseClient) {
       await supabaseClient
         .from('terminal_store')
-        .upsert({ user_path: 'pray73', data: db });
+        .upsert({ user_path: 'cloudflare_user', data: db });
     } else {
       await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
         method: 'POST',
@@ -624,8 +623,8 @@ async function pushDataToServer() {
     if (isCloudflare && supabaseClient) {
       const { error } = await supabaseClient
         .from('terminal_store')
-        .upsert({ user_path: 'pray73', data: db });
-      success = !error;
+        .upsert({ user_path: 'cloudflare_user', data: db });
+      if (!error) success = true;
     }
 
     const response = await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
