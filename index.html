@@ -526,7 +526,7 @@ async function backgroundSync(isInitial = false) {
       if (!cloudData) {
         const res = await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
           method: 'GET',
-          headers: { 'x-api-key': 'CRIS_SECURE_998877' }
+          headers: { 'X_API_KEY': 'CRIS_SECURE_998877' }
         });
         if (res.ok) {
           cloudData = await res.json();
@@ -597,7 +597,7 @@ async function pushDataToServerSilent() {
     } else {
       await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'CRIS_SECURE_998877' },
+        headers: { 'Content-Type': 'application/json', 'X_API_KEY': 'CRIS_SECURE_998877' },
         body: JSON.stringify(db)
       });
     }
@@ -630,7 +630,7 @@ async function pushDataToServer() {
 
     const response = await fetch(API_BASE_URL + '/.netlify/functions/save-data', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': 'CRIS_SECURE_998877' },
+      headers: { 'Content-Type': 'application/json', 'X_API_KEY': 'CRIS_SECURE_998877' },
       body: JSON.stringify(db)
     });
     if (response.ok) success = true;
