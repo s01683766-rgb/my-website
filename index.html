@@ -728,9 +728,10 @@ let isSyncing = false;
 
 let pendingRegOtpCode = null;
 let pendingRegData = null;
+let session = null;
 
 const SUPABASE_URL = 'https://anwwhrtszdrjdmdrtvoi.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFud3docnzsZmdyamRydHZvaSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzg5NTY4MDg4LCJleHAiOjIxMDUxNDQwODh9.DJb9igB0QftEZucScZsBnggUPK0-7Syjw9PLCUMFmqM';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFud3docnRzemRyamRtZHJ0dm9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NjgwODgsImV4cCI6MjEwNTE0NDA4OH0.DJb9igB0QftEZucScZsBnggUPK0-7Syjw9PLCUMFmqM';
 
 // --- SAFE SUPABASE INITIALIZATION ---
 let supabaseClient = null;
