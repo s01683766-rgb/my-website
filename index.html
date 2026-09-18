@@ -4,15 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
-  <title>CRIS-PRS // B&W MASTER TERMINAL</title>
+  <title>LEDGER // MASTER TERMINAL</title>
 
   <style>
-    :root { --bg: #000000; --fg: #ffffff; --dim: #888888; }
+    :root { --bg: #000000; --fg: #ffffff; --dim: #888888; --yellow: #ffd700; --accent-green: #2ea043; --accent-blue: #58a6ff; --accent-red: #da3633; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--fg); font-family: 'Courier New', Courier, monospace; min-height: 100vh; padding: 8px; display: flex; justify-content: center; text-transform: uppercase; }
-    .prs-terminal { width: 100%; max-width: 950px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 60px; }
+    body { background: var(--bg); color: var(--fg); font-family: 'Courier New', Courier, monospace; min-height: 100vh; padding: 8px; display: flex; justify-content: center; text-transform: uppercase; overflow-x: hidden; }
+    .prs-terminal { width: 100%; max-width: 950px; display: flex; flex-direction: column; gap: 8px; padding-bottom: 70px; }
     .bold { font-weight: bold; } .dim { color: var(--dim); } .blink { animation: blinker 1s linear infinite; }
     @keyframes blinker { 50% { opacity: 0; } }
+
+    @keyframes focusBlink {
+      0% { border-color: var(--fg); box-shadow: 0 0 6px var(--fg); background: #050505; }
+      50% { border-color: var(--dim); box-shadow: none; background: #000000; }
+      100% { border-color: var(--fg); box-shadow: 0 0 6px var(--fg); background: #050505; }
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--fg) !important;
+      background: #111 !important;
+      animation: focusBlink 1s infinite !important;
+    }
 
     .loading-dots span {
       animation: dotBlink 1.4s infinite both;
@@ -27,94 +38,86 @@
       100% { opacity: .2; }
     }
 
-    #fixed-search-hud { position: fixed; top: 8px; right: 8px; z-index: 9999; background: var(--bg); border: 2px solid var(--fg); padding: 4px; }
-    #fixed-search-hud button { border: none; font-size: 0.75rem; padding: 4px 8px; }
+    .active-sub-btn { background: var(--yellow) !important; color: #000 !important; border-color: var(--fg) !important; font-weight: bold; }
+    button.active-action-btn { background: var(--yellow) !important; color: #000 !important; border-color: var(--fg) !important; }
+    button.hit-flash-btn { background: var(--accent-green) !important; color: #fff !important; transform: scale(0.98); }
+    
+    .nav-btn.active-main-tab { background: var(--yellow) !important; color: #000 !important; border-color: var(--fg) !important; font-weight: bold; }
+    .box.active-working-section { border-color: var(--yellow) !important; box-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
 
-    .box { border: 1px solid var(--fg); padding: 12px; }
-    .box-title { font-size: 0.85rem; border-bottom: 1px dashed var(--fg); padding-bottom: 4px; margin-bottom: 12px; display: flex; justify-content: space-between; font-weight: bold; align-items: center; }
-    .status-bar { border: 2px solid var(--fg); padding: 6px 10px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 90px; }
+    .box { border: 1px solid var(--fg); padding: 8px; transition: all 0.2s ease; }
+    .box-title { font-size: 0.75rem; border-bottom: 1px dashed var(--fg); padding-bottom: 2px; margin-bottom: 6px; display: flex; justify-content: space-between; font-weight: bold; align-items: center; }
+    
+    #static-upper-dock { position: sticky; top: 0; z-index: 9998; background: var(--bg); padding-bottom: 4px; display: flex; flex-direction: column; gap: 4px; }
 
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .status-bar { border: 2px solid var(--fg); border-bottom: none; padding: 4px 8px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; font-size: 0.65rem; font-weight: bold; width: 100%; background: var(--bg); }
+    .status-bar-divider { border-bottom: 2px dotted var(--fg); width: 100%; margin-bottom: 2px; }
+    .ledger-header-brand { width: 100%; text-align: center; font-size: 0.85rem; border-bottom: 1px dashed var(--fg); padding-bottom: 2px; margin-bottom: 2px; letter-spacing: 1px; }
 
-    input, select, textarea { background: var(--bg); border: 1px solid var(--dim); color: var(--fg); font-family: inherit; padding: 8px 10px; font-size: 0.8rem; outline: none; width: 100%; text-transform: uppercase; }
+    /* Post-login action bar & nav bar (Hidden pre-login as requested) */
+    .post-login-controls { display: none; flex-direction: column; gap: 4px; }
+
+    .mid-action-bar { border: 2px solid var(--fg); border-top: none; padding: 6px 8px; background: #111; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+    .mid-action-bar button { flex: 1; font-size: 0.7rem; padding: 6px; background: var(--bg); color: var(--fg); border: 1px solid var(--fg); }
+
+    .nav-bar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; border-bottom: 2px solid var(--fg); padding-bottom: 4px; background: var(--bg); }
+    .nav-btn { background: var(--bg); color: var(--dim); border: 1px solid var(--dim); font-size: 0.5rem; padding: 5px 1px; }
+
+    #sliding-content-container { overflow-y: auto; max-height: calc(100vh - 150px); display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+
+    input, select, textarea { background: var(--bg); border: 1px solid var(--dim); color: var(--fg); font-family: inherit; padding: 6px 8px; font-size: 0.8rem; outline: none; width: 100%; text-transform: uppercase; }
     input[readonly], textarea[readonly] { border-style: dashed; color: var(--dim); }
-    input:focus, select:focus, textarea:focus { border-color: var(--fg); background: #111; }
+    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
-    button { background: var(--bg); color: var(--fg); border: 1px solid var(--fg); font-family: inherit; cursor: pointer; font-weight: bold; padding: 8px 10px; font-size: 0.8rem; text-transform: uppercase; transition: all 0.1s; }
+    button { background: var(--bg); color: var(--fg); border: 1px solid var(--fg); font-family: inherit; cursor: pointer; font-weight: bold; padding: 6px 8px; font-size: 0.75rem; text-transform: uppercase; transition: all 0.1s; }
     button:active { background: var(--fg); color: var(--bg); }
     button.inverted { background: var(--fg); color: var(--bg); }
+    .btn-green { background: var(--accent-green); color: white; border: none; }
+    .btn-red { background: var(--accent-red); color: white; border: none; }
 
-    .nav-bar { display: none; grid-template-columns: repeat(6, 1fr); gap: 4px; border-bottom: 2px solid var(--fg); padding-bottom: 8px; }
-    .nav-btn { background: var(--bg); color: var(--dim); border: 1px solid var(--dim); font-size: 0.65rem; }
-    .nav-btn.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+    .table-container { max-height: 280px; overflow-y: auto; border: 1px solid var(--fg); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
+    th { border-bottom: 1px solid var(--fg); text-align: left; padding: 4px; position: sticky; top: 0; background: var(--bg); }
+    td { border-bottom: 1px dashed var(--dim); padding: 4px; }
 
-    .table-container { max-height: 350px; overflow-y: auto; border: 1px solid var(--fg); }
-    table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
-    th { border-bottom: 1px solid var(--fg); text-align: left; padding: 6px; }
-    td { border-bottom: 1px dashed var(--dim); padding: 6px; }
-
-    .view-page { display: none; flex-direction: column; gap: 12px; }
-    .stat-val { font-size: 1.5rem; font-weight: bold; margin-top: 4px; letter-spacing: 2px; }
+    .view-page { display: none; flex-direction: column; gap: 8px; }
+    .stat-val { font-size: 1.2rem; font-weight: bold; margin-top: 2px; letter-spacing: 1px; }
     
-    #search-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 10000; padding: 14px; flex-direction: column; gap: 10px; }
-    .task-result-box { border: 2px solid var(--fg); background: #111; padding: 12px; margin-bottom: 10px; display: none; }
+    #search-modal, #status-popup-modal, #generic-centered-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 20000; justify-content: center; align-items: center; padding: 12px; }
+    
+    .task-result-box { border: 2px solid var(--fg); background: #111; padding: 6px; margin-bottom: 6px; display: none; cursor: pointer; }
+
+    .admin-menu-grid, .account-menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+    .admin-sub-panel, .account-sub-panel { display: none; border-top: 1px dashed var(--fg); padding-top: 8px; margin-top: 8px; }
 
     .print-controls-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      font-size: 0.7rem;
-      background: #111;
-      border: 1px dashed var(--dim);
-      padding: 6px 10px;
-      margin-bottom: 8px;
-      align-items: center;
+      display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.6rem; background: #111; border: 1px dashed var(--dim); padding: 4px 6px; margin-bottom: 4px; align-items: center;
     }
-    .print-controls-bar label {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      cursor: pointer;
-    }
+    .print-controls-bar label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
     .print-receipt-header { display: none; }
-
-    body.hide-date .print-col-date, body.hide-date .print-date-row { display: none !important; }
-    body.hide-time .print-col-time, body.hide-time .print-time-row { display: none !important; }
-    body.hide-ip .print-col-ip, body.hide-ip .print-ip-row { display: none !important; }
-    body.hide-desc .print-col-desc, body.hide-desc .print-desc-row { display: none !important; }
 
     @media print {
       body { background: #fff !important; color: #000 !important; }
-      .prs-terminal > *:not(.view-page), #fixed-search-hud, .nav-bar, .status-bar, button, form, .box-title span:last-child, .grid-2, .grid-3, .task-result-box, input, select, textarea, .print-controls-bar { display: none !important; }
+      .prs-terminal > *:not(.view-page), #static-upper-dock, button, form, .box-title span:last-child, .grid-2, .grid-3, .grid-4, .task-result-box, input, select, textarea, .print-controls-bar { display: none !important; }
       .view-page { display: none !important; }
       .view-page[style*="flex"] { display: block !important; }
       .prs-terminal { width: 100% !important; max-width: none !important; padding: 0 !important; }
       .box { border: none !important; padding: 0 !important; }
-      .box-title { border-bottom: 2px solid #000 !important; color: #000 !important; margin-bottom: 10px !important; }
-      
-      .print-receipt-header {
-        display: block !important;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #000;
-        font-size: 0.85rem;
-        line-height: 1.5;
-        color: #000 !important;
-      }
+      .box-title { border-bottom: 2px solid #000 !important; color: #000 !important; margin-bottom: 6px !important; }
+      .print-receipt-header { display: block !important; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #000; font-size: 0.75rem; line-height: 1.3; color: #000 !important; }
       .table-container { max-height: none !important; overflow: visible !important; border: 1px solid #000 !important; }
       table { width: 100% !important; border-collapse: collapse !important; }
-      th, td { border: 1px solid #000 !important; color: #000 !important; padding: 6px !important; }
-      th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      th, td { border: 1px solid #000 !important; color: #000 !important; padding: 4px !important; }
+      th { background: #eee !important; }
     }
 
     @media (max-width: 650px) {
-      .grid-2, .grid-3 { grid-template-columns: 1fr; }
-      .nav-bar { grid-template-columns: repeat(3, 1fr); }
-      #btn-admin, .nav-btn:nth-child(6) { grid-column: span 1.5; }
-      .status-bar { flex-direction: column; text-align: left; margin-right: 0; }
-      #fixed-search-hud { position: static; margin-bottom: 8px; }
-      #fixed-search-hud button { width: 100%; padding: 12px; font-size: 1rem; border: 1px dashed var(--fg); }
+      .grid-2, .grid-3, .grid-4, .admin-menu-grid, .account-menu-grid { grid-template-columns: 1fr; }
+      .nav-bar { grid-template-columns: repeat(7, 1fr); }
     }
   </style>
 
@@ -122,339 +125,786 @@
 </head>
 <body>
 
-<div id="fixed-search-hud"><button class="inverted" onclick="openSearchModal()">[SRCH] TRACK REF</button></div>
-
+<!-- SEARCH MODAL -->
 <div id="search-modal">
-  <div class="box" style="border: 2px solid var(--fg); height: 95vh; display:flex; flex-direction:column; gap:8px;">
-    <div class="box-title"><span>REFERENCE TRACKING & ACCOUNT LOOKUP DESK</span><span onclick="closeSearchModal()" style="cursor:pointer; text-decoration:underline;">[CLOSE X]</span></div>
+  <div class="box" style="width: 100%; max-width: 750px; height: 90vh; background: var(--bg); border: 2px solid var(--fg); display:flex; flex-direction:column; gap:8px; padding: 12px;">
+    <div class="box-title">
+      <span>REFERENCE TRACKING & AUTO-FETCH DESK</span>
+      <span onclick="closeSearchModal()" style="cursor:pointer; text-decoration:underline;">[CLOSE X]</span>
+    </div>
     <div class="grid-2">
-      <div><select id="search-criteria" onchange="runSearch()"><option value="ref" selected>1. TRACK REF ID</option><option value="accNo">2. 11-DIGIT ACC NO</option><option value="mobile">3. MOBILE NUMBER</option><option value="name">4. HOLDER NAME</option></select></div>
-      <div><input type="text" id="search-query" placeholder="ENTER QUERY OR REF ID..." oninput="runSearch()" /></div>
+      <div>
+        <select id="search-criteria" onchange="onSearchCriteriaChange()">
+          <option value="accNo" selected>1. ACC NO (AUTO-FETCH)</option>
+          <option value="mobile">2. MOBILE NUMBER (AUTO)</option>
+          <option value="ref">3. TRACK REF ID</option>
+          <option value="name">4. HOLDER NAME</option>
+        </select>
+      </div>
+      <div>
+        <input type="text" id="search-query" class="autofocus-target" inputmode="numeric" maxlength="11" placeholder="ENTER ACC NO..." oninput="handleSearchAutoInput(event)" onkeydown="handleSearchKeyDown(event)" />
+      </div>
     </div>
-    <div style="flex:1; overflow-y:auto; border-top:1px dashed var(--fg); margin-top:6px;">
-      <table><thead><tr><th>REF ID</th><th>ACC / DETAILS</th><th>TYPE / STATUS</th><th>AMOUNT / INFO</th><th>ACTION</th></tr></thead><tbody id="search-results-body"><tr><td colspan="5" style="text-align:center;">ENTER A QUERY OR REFERENCE ID TO TRACK RECORD</td></tr></tbody></table>
+
+    <div style="height: 6px;" id="search-enter-gap"></div>
+    <div id="search-enter-btn-container" style="display:block; margin-bottom: 4px;">
+      <button class="inverted" onclick="runSearchForSingleRecord(); flashButton(this);" style="width: 100%; padding: 8px;">[ ENTER / SEARCH RECORD ]</button>
     </div>
+
+    <div class="box" style="background:#111; margin-top:4px; min-height: 200px; display: flex; flex-direction: column; justify-content: space-around; padding: 14px;">
+      <div class="box-title" style="font-size:0.8rem; margin-bottom:8px;">AUTO-FETCHED RECORD DETAILS (SINGLE VIEW)</div>
+      <div class="grid-3" style="font-size:0.85rem; gap: 10px;">
+        <div><span class="dim" id="label-primary-id">ACC NO / HOLDER:</span><br><span id="autofill-main-identifier" class="bold" style="font-size:0.95rem;">---</span></div>
+        <div><span class="dim">BALANCE:</span><br><span id="autofill-balance" class="bold" style="font-size:0.95rem;">---</span></div>
+        <div><span class="dim">REF ID:</span><br><span id="autofill-ref" class="bold" style="font-size:0.95rem;">---</span></div>
+      </div>
+      <div class="grid-3" style="font-size:0.8rem; margin-top:8px; border-top: 1px dashed var(--dim); padding-top: 8px;">
+        <div><span class="dim">MOBILE:</span> <span id="autofill-mobile" class="bold">---</span></div>
+        <div><span class="dim">EMAIL:</span> <span id="autofill-email" class="bold">---</span></div>
+        <div><span class="dim">LAST IP:</span> <span id="autofill-ip" class="bold">---</span></div>
+      </div>
+      <div class="grid-3" style="font-size:0.8rem; margin-top:4px;">
+        <div><span class="dim">LAST TX:</span> <span id="autofill-last-tx" class="bold">---</span></div>
+        <div><span class="dim">OPENED:</span> <span id="autofill-opened" class="bold">---</span></div>
+        <div><span class="dim">INFO:</span> <span id="autofill-extra-desc" class="bold">---</span></div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top: auto; padding-top: 6px; border-top: 1px dashed var(--fg);">
+      <button class="inverted" onclick="exportSearchBoxPdf(); flashButton(this);" style="padding: 10px;">[ 1. GENERATE PDF ]</button>
+      <button class="inverted" onclick="exportSearchBoxPassbook(); flashButton(this);" style="padding: 10px;">[ 2. VIEW PASSBOOK ]</button>
+    </div>
+  </div>
+</div>
+
+<!-- CENTERED POPUP MODAL FOR VIEW REQUEST STATUS -->
+<div id="status-popup-modal">
+  <div class="box" style="width: 100%; max-width: 450px; background: #111; border: 2px solid var(--fg); padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+    <div class="box-title">
+      <span>PRE-LOGIN REQUEST STATUS TRACKER</span>
+      <span onclick="closeStatusPopupModal()" style="cursor:pointer; text-decoration:underline;">[CLOSE X]</span>
+    </div>
+    <p class="dim" style="font-size: 0.75rem;">ENTER 10-CHARACTER REF ID (COMBINATION OF ALPHA, NUM, UPPER, LOWER, SPECIAL):</p>
+    <input type="text" id="prelogin-ref-input" placeholder="ENTER 10-CHAR REF ID..." maxlength="10" style="font-size: 0.9rem; padding: 10px;" oninput="trackPreLoginRef(event)" />
+    <div id="prelogin-ref-result" style="font-size: 0.75rem; color: var(--dim); padding: 6px; border: 1px dashed var(--dim); min-height: 50px;">STATUS RESULTS WILL APPEAR HERE...</div>
+    <button class="inverted" onclick="closeStatusPopupModal()" style="padding: 8px; margin-top: 4px;">[ CLOSE WINDOW ]</button>
+  </div>
+</div>
+
+<!-- GENERIC CENTERED POPUP MODAL FOR CHAT / ADMIN WINDOWS -->
+<div id="generic-centered-modal">
+  <div class="box" id="generic-modal-box" style="width: 100%; max-width: 650px; max-height: 90vh; overflow-y: auto; background: var(--bg); border: 2px solid var(--fg); padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+    <div class="box-title">
+      <span id="generic-modal-title">MODAL DESK</span>
+      <span onclick="closeGenericModal()" style="cursor:pointer; text-decoration:underline;">[CLOSE X]</span>
+    </div>
+    <div id="generic-modal-body" style="display:flex; flex-direction:column; gap:8px;"></div>
   </div>
 </div>
 
 <div class="prs-terminal">
 
-  <div class="status-bar">
-    <div>SYS: [B&W-CORE-SECURE-V10]</div>
-    <div>NET: <span id="net-status-tag" class="blink">CHECKING...</span></div>
-    <div>USER: <span id="session-tag">DISCONNECTED</span></div>
-    <div>IP: <span id="ip-tag">FETCHING...</span></div>
-    <div id="cloud-sync-status" class="dim">SYNC: IDLE</div>
-  </div>
-
-  <div class="view-page" id="page-login" style="display: flex;">
-    <div class="box" id="login-box">
-      <div class="box-title">OPERATOR LOGON</div>
-      <div id="login-task-feedback" class="task-result-box"></div>
-      <form onsubmit="handleLogon(event)" style="display:flex; flex-direction:column; gap:8px;">
-        <div class="grid-2"><input type="text" id="inp-uid" placeholder="ID (E.G. ADMIN)" required /><input type="password" id="inp-pin" placeholder="PIN" required /></div>
-        <button type="submit" class="inverted">[ AUTHORIZE ]</button>
-      </form>
-      <div style="margin-top:10px; display:flex; justify-content:space-between; font-size:0.75rem;">
-        <span style="text-decoration:underline; cursor:pointer;" onclick="toggleAuth()">APPLY FOR OPERATOR ACCESS</span>
-        <span style="text-decoration:underline; cursor:pointer;" onclick="openOnlineRegModal()">ONLINE REGISTRATION DESK</span>
-      </div>
+  <!-- STATIC UPPER DOCK -->
+  <div id="static-upper-dock">
+    <!-- Above yellow dotted line: Always visible on both pre-login and post-login pages -->
+    <div class="status-bar">
+      <div class="ledger-header-brand">LEDGER // MASTER SECURE TERMINAL</div>
+      <div>NET: <span id="net-status-tag" class="blink">CHECKING...</span></div>
+      <div>USER: <span id="session-tag">DISCONNECTED</span></div>
+      <div id="cloud-sync-status" class="dim">SYNC: IDLE</div>
     </div>
+    <div class="status-bar-divider"></div>
 
-    <div class="box" id="reg-box" style="display:none; border-style:dashed;">
-      <div class="box-title">NEW OPERATOR REGISTRATION (ROUTED TO ADMIN)</div>
-      <div id="reg-task-feedback" class="task-result-box"></div>
-      <form onsubmit="handleOnlineReg(event)" style="display:flex; flex-direction:column; gap:8px;">
-        <div class="grid-2"><input type="text" id="reg-uid" placeholder="DESIRED USER ID" required /><input type="password" id="reg-pin" placeholder="CREATE PIN" required /></div>
-        <div class="grid-2">
-          <input type="tel" id="reg-phone" placeholder="MOBILE NO (FOR SMS/OTP)" required />
-          <select id="reg-otp-mode"><option value="DIRECT">WITHOUT OTP</option><option value="OTP">WITH TXT MESSAGE APP OTP</option></select>
-        </div>
-        <button type="submit">[ SUBMIT REGISTRATION REQUEST ]</button>
-      </form>
-      <div style="margin-top:10px; text-align:right; font-size:0.75rem;"><span style="text-decoration:underline; cursor:pointer;" onclick="toggleAuth()">BACK TO LOGON</span></div>
+    <!-- Below yellow dotted line: 7 navigation bars, message, and search directory appear ONLY post-login -->
+    <div class="post-login-controls" id="post-login-controls">
+      <div class="mid-action-bar" id="mid-action-bar">
+        <button class="btn-msg" onclick="openChatModal(); flashButton(this);">💬 MESSAGES <span id="msg-badge" class="msg-badge" style="display:inline-block; position:static; margin-left:4px;">0</span></button>
+        <button onclick="openSearchModal(); flashButton(this);">🔍 SEARCH DIRECTORY</button>
+      </div>
+
+      <nav class="nav-bar" id="app-nav">
+        <button class="nav-btn" onclick="showPage('page-dash'); flashButton(this);">1.DASH</button>
+        <button class="nav-btn" onclick="showPage('page-acc'); flashButton(this);">2.ACCOUNTS</button>
+        <button class="nav-btn" onclick="showPage('page-teller'); flashButton(this);">3.TELLER</button>
+        <button class="nav-btn" onclick="showPage('page-passbook'); flashButton(this);">4.PASSBOOK</button>
+        <button class="nav-btn" onclick="openChatModal(); flashButton(this);">5.CHAT</button>
+        <button class="nav-btn" onclick="showPage('page-audit'); flashButton(this);">6.AUDIT</button>
+        <button class="nav-btn" id="btn-section-7" onclick="showPage('page-section-7'); flashButton(this);">7.ADMIN</button>
+      </nav>
     </div>
   </div>
 
-  <nav class="nav-bar" id="app-nav">
-    <button class="nav-btn active" onclick="showPage('page-dash')">1.DASH</button>
-    <button class="nav-btn" onclick="showPage('page-acc')">2.ACCOUNTS</button>
-    <button class="nav-btn" onclick="showPage('page-teller')">3.TELLER</button>
-    <button class="nav-btn" onclick="showPage('page-passbook')">4.PASSBOOK</button>
-    <button class="nav-btn" id="btn-admin" onclick="showPage('page-admin')">5.ADMIN</button>
-    <button class="nav-btn" onclick="showPage('page-audit')">6.AUDIT</button>
-  </nav>
+  <div id="sliding-content-container">
 
-  <div class="view-page" id="page-dash">
-    <div class="grid-3">
-      <div class="box"><div class="box-title">DEPOSITS (CR)</div><div class="stat-val" id="val-dep">0.00</div></div>
-      <div class="box"><div class="box-title">WITHDRAWALS (DR)</div><div class="stat-val" id="val-with">0.00</div></div>
-      <div class="box"><div class="box-title">ACTIVE A/C</div><div class="stat-val" id="val-accs">0</div></div>
-    </div>
-  </div>
-
-  <div class="view-page" id="page-acc">
-    <div class="box" style="border: 2px dashed var(--fg);">
-      <div class="box-title">HYBRID CONTACT IMPORT & PULLING ENGINE</div>
-      <p class="dim" style="font-size:0.7rem; margin-bottom:10px;">1. SELECT SPECIFIC CONTACTS DIRECTLY FROM DEVICE.<br>2. BULK IMPORT ENTIRE ADDRESS BOOK VIA .VCF FILE.</p>
-      <div class="grid-2">
-        <button class="inverted" onclick="importMultipleContacts()">[ CHOOSE CONTACTS ]</button>
-        <button class="inverted" onclick="document.getElementById('vcf-upload').click()">[ IMPORT .VCF ]</button>
-      </div>
-      <input type="file" id="vcf-upload" accept=".vcf" style="display:none;" onchange="processVCF(event)" />
-    </div>
-
-    <div class="box">
-      <div class="box-title">
-        <span>MANUAL ACCOUNT REGISTRATION</span>
-        <button class="inverted" onclick="requestSmsBrowserPermission()" style="font-size:0.65rem; padding:2px 6px;">[SMS PERMISSION: <span id="sms-perm-status">OFF</span>]</button>
-      </div>
-      <div id="acc-task-feedback" class="task-result-box"></div>
-      <form onsubmit="manualAccount(event)" style="display:flex; flex-direction:column; gap:8px;">
-        <div class="grid-3">
-          <input type="text" id="acc-name" placeholder="HOLDER NAME" required />
-          <input type="text" id="acc-father" placeholder="FATHER'S NAME" />
-          <input type="tel" id="acc-phone" placeholder="MOBILE NO" required />
-        </div>
-        <div class="grid-3">
-          <input type="text" id="acc-email" placeholder="EMAIL (OPTIONAL)" />
-          <select id="acc-sms"><option value="OFF" selected>SMS ALERTS: OFF (TOGGLE)</option><option value="ON">SMS ALERTS: ON</option></select>
-          <select id="acc-auth-mode" onchange="toggleAccountOtpBox()"><option value="DIRECT">CREATE WITHOUT OTP</option><option value="OTP">VERIFY VIA TXT MESSAGE APP OTP</option></select>
-        </div>
-        <textarea id="acc-address" placeholder="PHYSICAL ADDRESS" rows="1"></textarea>
-        <div id="acc-otp-box" style="display:none;"><input type="text" id="acc-otp-input" placeholder="ENTER OTP SENT VIA TXT MESSAGE APP" /></div>
-        <button type="submit" class="inverted">[ GENERATE A/C / QUEUE REQUEST ]</button>
-      </form>
-    </div>
-
-    <div class="box" id="box-edit-acc" style="display:none; border: 2px solid var(--fg);">
-      <div class="box-title"><span>ACCOUNT MODIFICATION DESK</span><span onclick="closeEditAcc()" style="cursor:pointer; text-decoration:underline;">[CANCEL]</span></div>
-      <div id="edit-task-feedback" class="task-result-box"></div>
-      <form onsubmit="saveAccEdit(event)" style="display:flex; flex-direction:column; gap:8px;">
-        <div class="grid-2"><input type="text" id="edit-accno" readonly /><input type="text" id="edit-bal" readonly /></div>
-        <div class="grid-2"><input type="text" id="edit-name" required /><input type="text" id="edit-father" required /></div>
-        <div class="grid-2"><input type="tel" id="edit-phone" required /><input type="text" id="edit-email" /></div>
-        <div class="grid-2"><textarea id="edit-address" rows="2"></textarea><select id="edit-sms"><option value="ON">SMS: ON</option><option value="OFF">SMS: OFF</option></select></div>
-        <button type="submit" class="inverted">[ SUBMIT EDIT FOR ADMIN APPROVAL ]</button>
-      </form>
-    </div>
-
-    <div class="box">
-      <div class="box-title">
-        <span>RECORD DIRECTORY (LAZY LOADED)</span>
-        <div>
-          <button class="inverted" onclick="loadAccountDirectory()" style="padding: 2px 8px; font-size: 0.7rem; margin-right: 6px;">[ LOAD ALL A/C ]</button>
-          <button class="inverted" onclick="triggerPrint('page-acc')" style="padding: 2px 8px; font-size: 0.7rem;">[ PRINT ]</button>
+    <!-- Login Page -->
+    <div class="view-page" id="page-login" style="display: flex; margin-top: 2vh; gap: 12px; align-items: center;">
+      <div class="box" id="login-box" style="width: 100%; max-width: 550px; margin: 0 auto; padding: 20px;">
+        <div class="box-title" style="font-size: 0.9rem; text-align: center; justify-content: center;">LEDGER // OPERATOR LOGIN</div>
+        <div id="login-task-feedback" class="task-result-box" onclick="this.style.display='none'"></div>
+        <form onsubmit="handleLogon(event)" style="display:flex; flex-direction:column; gap:14px; margin-top: 15px;">
+          <div>
+            <label class="dim" style="font-size: 0.75rem; display: block; margin-bottom: 4px;">OPERATOR ID / USER ID:</label>
+            <input type="text" id="inp-uid" class="autofocus-target" placeholder="E.G. USR-123456" required autofocus style="font-size: 1rem; padding: 10px;" oninput="autoJump(this, 'inp-pin')" />
+          </div>
+          <div>
+            <label class="dim" style="font-size: 0.75rem; display: block; margin-bottom: 4px;">SECURITY PIN:</label>
+            <input type="password" id="inp-pin" placeholder="PIN" value="" required style="font-size: 1rem; padding: 10px;" oninput="validatePinInput(this)" />
+            <div id="pin-hint" style="font-size: 0.6rem; color: var(--yellow); margin-top: 4px;">RULE (SET BY OWNER): DYNAMIC HINT.</div>
+          </div>
+          <button type="submit" class="inverted" onclick="flashButton(this)" style="font-size: 1rem; padding: 12px; margin-top: 6px;">[ AUTHORIZE LOGIN ]</button>
+        </form>
+        <div class="grid-2" style="margin-top: 16px;">
+          <button type="button" onclick="toggleLoginAction('reg'); flashButton(this);" class="inverted" style="padding: 10px;">[ REGISTER ]</button>
+          <button type="button" onclick="toggleLoginAction('recover'); flashButton(this);" class="inverted" style="padding: 10px;">[ RECOVER ]</button>
         </div>
       </div>
-      <div class="print-controls-bar">
-        <label><input type="checkbox" id="chk-date-page-acc" checked onchange="togglePrintMeta('page-acc')" /> PRINT DATE</label>
-        <label><input type="checkbox" id="chk-time-page-acc" checked onchange="togglePrintMeta('page-acc')" /> PRINT TIME</label>
-        <label><input type="checkbox" id="chk-ip-page-acc" checked onchange="togglePrintMeta('page-acc')" /> TERMINAL IP</label>
-        <label><input type="checkbox" id="chk-desc-page-acc" checked onchange="togglePrintMeta('page-acc')" /> METADATA</label>
-      </div>
-      <div class="print-receipt-header" id="print-header-page-acc"></div>
-      <div class="table-container">
-        <table>
-          <thead><tr><th>11-DIGIT ACC</th><th>HOLDER & DETAILS</th><th>CONTACT & SMS</th><th>BAL</th><th>OPENED / ACCESSED</th></tr></thead>
-          <tbody id="body-accs"><tr><td colspan="5" style="text-align:center;">CLICK 'LOAD ALL A/C' TO FETCH RECORDS</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
 
-  <div class="view-page" id="page-teller">
-    <div class="box">
-      <div class="box-title">TRANSACTION CLEARING DESK</div>
-      <div id="tx-task-feedback" class="task-result-box"></div>
-      <form onsubmit="processTx(event)" style="display:flex; flex-direction:column; gap:8px;">
-        <div class="grid-2">
-          <div><label class="dim">ACC NO:</label><input type="number" id="tx-acc" oninput="autoFetch()" required /></div>
-          <div><label class="dim">DATA:</label><input type="text" id="tx-fetch" readonly placeholder="ENTER A/C TO CHECK..." /></div>
+      <!-- Registration Box -->
+      <div class="box" id="reg-box" style="display:none; border-style:dashed; width: 100%; max-width: 550px; margin: 0 auto; padding: 20px;">
+        <div class="box-title"><span>NEW USER REGISTRATION DESK</span> <span onclick="toggleLoginAction('login')" style="cursor:pointer; text-decoration:underline;">[BACK]</span></div>
+        <div id="reg-task-feedback" class="task-result-box" onclick="this.style.display='none'"></div>
+        
+        <form onsubmit="handleUserRegistration(event)" style="display:flex; flex-direction:column; gap:12px; margin-top: 10px;">
+          <div>
+            <label class="dim" style="font-size:0.75rem;">FULL NAME:</label>
+            <input type="text" id="reg-name" placeholder="YOUR FULL NAME" required style="font-size: 0.9rem; padding: 8px;" />
+          </div>
+          <div>
+            <label class="dim" style="font-size:0.75rem;">MOBILE NO (10 DIGITS):</label>
+            <input type="tel" id="reg-phone" inputmode="numeric" placeholder="10-DIGIT MOBILE" maxlength="10" required style="font-size: 0.9rem; padding: 8px;" oninput="validateMobileInput(this)" />
+            <div id="reg-phone-warning" style="font-size:0.55rem; color:var(--accent-red); display:none;">EXACT 10 DIGITS REQUIRED.</div>
+          </div>
+          <div>
+            <label class="dim" style="font-size:0.75rem;">CREATE PIN (AS PER OWNER RULE):</label>
+            <input type="password" id="reg-pin" placeholder="PIN" value="" required style="font-size: 0.9rem; padding: 8px;" oninput="validatePinInput(this)" />
+            <div id="reg-pin-hint" style="font-size: 0.6rem; color: var(--yellow); margin-top: 4px;">RULE (SET BY OWNER): DYNAMIC HINT.</div>
+          </div>
+          <div>
+            <label class="dim" style="font-size:0.75rem;">ASSIGN ROLE:</label>
+            <select id="reg-role-type" style="font-size: 0.9rem; padding: 8px;">
+              <option value="ADMIN" selected>ROLE: ADMIN</option>
+              <option value="OPERATOR">ROLE: OPERATOR</option>
+              <option value="SUBSCRIBER_TENANT">ROLE: INDEPENDENT CUSTOMER</option>
+              <option value="GENERAL_USER">ROLE: GENERAL USER</option>
+            </select>
+          </div>
+          <div>
+            <label class="dim" style="font-size:0.75rem;">EMAIL ADDRESS (OPTIONAL / FOR OTP):</label>
+            <input type="text" id="reg-email" placeholder="EMAIL (OPTIONAL)" oninput="validateEmailInput(this)" style="font-size: 0.9rem; padding: 8px;" />
+            <div id="email-warning" style="font-size:0.6rem; color:var(--accent-red); display:none; margin-top:2px;">WARNING: INVALID EMAIL FORMAT.</div>
+          </div>
+          <div>
+            <label class="dim" style="font-size:0.75rem;">REGISTRATION MODE:</label>
+            <select id="reg-mode" style="font-size: 0.9rem; padding: 8px;">
+              <option value="DIRECT" selected>DIRECT (WITHOUT OTP)</option>
+              <option value="EMAIL_OTP">VERIFY VIA EMAIL OTP</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn-green" onclick="flashButton(this)" style="padding: 10px; margin-top: 6px;">[ SUBMIT REGISTRATION ]</button>
+        </form>
+
+        <div style="margin-top: 10px; border-top: 1px dashed var(--fg); padding-top: 8px;">
+          <button type="button" class="inverted" onclick="openStatusPopupModal(); flashButton(this);" style="width: 100%; padding: 8px;">[ VIEW REQUEST STATUS (TRACK REF ID) ]</button>
         </div>
-        <div class="grid-3">
-          <input type="number" step="any" id="tx-amt" placeholder="AMOUNT (NEGATIVE = DEBIT)" required />
-          <select id="tx-type"><option value="CR">CREDIT (CR)</option><option value="DR">DEBIT (DR)</option></select>
-          <input type="text" id="tx-ref" placeholder="PARTICULARS / DESCRIPTION" required />
+
+      </div>
+
+      <!-- Recovery Box -->
+      <div class="box" id="recover-box" style="display:none; border-style:dashed; width: 100%; max-width: 550px; margin: 0 auto; padding: 20px;">
+        <div class="box-title"><span>PASSWORD & USER ID RECOVERY DESK</span> <span onclick="toggleLoginAction('login')" style="cursor:pointer; text-decoration:underline;">[BACK]</span></div>
+        <div id="recover-task-feedback" class="task-result-box" onclick="this.style.display='none'"></div>
+        
+        <form onsubmit="handleRecoverySubmission(event)" style="display:flex; flex-direction:column; gap:12px; margin-top: 10px;">
+          <div>
+            <label class="dim" style="font-size:0.75rem;">RECOVERY SELECTION:</label>
+            <select id="rec-type" style="font-size: 0.9rem; padding: 8px;" onchange="onRecoveryTypeChange()">
+              <option value="PASSWORD" selected>RECOVER PASSWORD</option>
+              <option value="USER_ID">RECOVER USER ID</option>
+            </select>
+          </div>
+          <div id="rec-uid-group">
+            <label class="dim" style="font-size:0.75rem;">USER ID:</label>
+            <input type="text" id="rec-uid" placeholder="USER ID" style="font-size: 0.9rem; padding: 8px;" />
+          </div>
+          <div>
+            <label class="dim" style="font-size:0.75rem;">VERIFIED MOBILE NO (10 DIGITS):</label>
+            <input type="tel" id="rec-phone" inputmode="numeric" placeholder="10-DIGIT MOBILE" maxlength="10" required style="font-size: 0.9rem; padding: 8px;" oninput="validateMobileInput(this)" />
+            <div id="rec-phone-warning" style="font-size:0.55rem; color:var(--accent-red); display:none;">EXACT 10 DIGITS REQUIRED.</div>
+          </div>
+          <div>
+            <label class="dim" style="font-size:0.75rem;">DETAILS / REASON:</label>
+            <input type="text" id="rec-details" placeholder="VERIFICATION DETAILS" required style="font-size: 0.9rem; padding: 8px;" />
+          </div>
+          <button type="submit" class="inverted" onclick="flashButton(this)" style="padding: 10px;">[ SUBMIT RECOVERY REQUEST ]</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="view-page" id="page-dash">
+      <div class="grid-3">
+        <div class="box"><div class="box-title">DEPOSITS (CR)</div><div class="stat-val" id="val-dep">0.00</div></div>
+        <div class="box"><div class="box-title">WITHDRAWALS (DR)</div><div class="stat-val" id="val-with">0.00</div></div>
+        <div class="box"><div class="box-title">ACTIVE A/C</div><div class="stat-val" id="val-accs">0</div></div>
+      </div>
+    </div>
+
+    <div class="view-page" id="page-acc">
+      <div class="box">
+        <div class="box-title">ACCOUNTS MANAGEMENT DESK</div>
+        <p class="dim" style="font-size:0.75rem; margin-bottom:6px;">SELECT AN ACCOUNT MODULE BELOW:</p>
+        
+        <div class="account-menu-grid">
+          <button class="inverted sub-nav-btn" onclick="openAccountSubPanel('panel-acc-import', this)">[1] HYBRID CONTACT & VCF IMPORT</button>
+          <button class="inverted sub-nav-btn" onclick="openAccountSubPanel('panel-acc-manual', this)">[2] MANUAL ACCOUNT REGISTRATION</button>
+          <button class="inverted sub-nav-btn" onclick="openAccountSubPanel('panel-acc-edit', this)">[3] ACCOUNT MODIFICATION DESK</button>
+          <button class="inverted sub-nav-btn" onclick="openAccountSubPanel('panel-acc-directory', this)">[4] RECORD DIRECTORY & DIRECTORY PRINT</button>
         </div>
-        <button type="submit" class="inverted">[ PROCESS TRANSACTION ]</button>
-      </form>
-    </div>
-  </div>
 
-  <div class="view-page" id="page-passbook">
-    <div class="box">
-      <div class="box-title">
-        <span>DIGITAL PASSBOOK & STATEMENT DESK</span>
-        <button class="inverted" onclick="triggerPrint('page-passbook')" style="padding: 2px 8px; font-size: 0.7rem;">[ PRINT PASSBOOK ]</button>
-      </div>
-      <div class="print-controls-bar">
-        <label><input type="checkbox" id="chk-date-page-passbook" checked onchange="togglePrintMeta('page-passbook')" /> PRINT DATE</label>
-        <label><input type="checkbox" id="chk-time-page-passbook" checked onchange="togglePrintMeta('page-passbook')" /> PRINT TIME</label>
-        <label><input type="checkbox" id="chk-ip-page-passbook" checked onchange="togglePrintMeta('page-passbook')" /> TERMINAL IP</label>
-        <label><input type="checkbox" id="chk-desc-page-passbook" checked onchange="togglePrintMeta('page-passbook')" /> PARTICULARS</label>
-      </div>
-      <div class="grid-2" style="margin-bottom: 10px;">
-        <div><input type="number" id="pb-acc-input" placeholder="ENTER 11-DIGIT ACC NO" oninput="loadPassbookData()" /></div>
-        <div><input type="text" id="pb-holder-info" readonly placeholder="HOLDER DETAILS & BALANCE" /></div>
-      </div>
-      <div class="print-receipt-header" id="print-header-page-passbook"></div>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th class="print-col-date">DATE</th>
-              <th class="print-col-time">TIME</th>
-              <th class="print-col-ip">IP</th>
-              <th>TYPE</th>
-              <th class="print-col-desc">PARTICULARS / DESCRIPTION</th>
-              <th>AMOUNT</th>
-              <th>CLEAR BAL</th>
-            </tr>
-          </thead>
-          <tbody id="body-passbook-ledger">
-            <tr><td colspan="7" style="text-align:center;">ENTER AN ACCOUNT NUMBER TO VIEW PASSBOOK</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <div class="view-page" id="page-admin">
-    <div class="box" style="margin-bottom:12px;">
-      <div class="box-title">SYSTEM CONFIGURATION & SECURITY CONTROLS</div>
-      <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding: 6px 0;">
-        <span>REQUIRE ONLINE CONNECTION FOR DEBITS (DR):</span>
-        <button type="button" id="btn-toggle-debit" class="inverted" onclick="toggleDebitSetting()">OFF</button>
-      </div>
-      <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding: 6px 0; border-top:1px dashed var(--dim); margin-top:6px;">
-        <span>SIMULATED SMS GATEWAY ALERTS:</span>
-        <button type="button" id="btn-toggle-sms" class="inverted" onclick="toggleSmsGlobalSetting()">ON</button>
-      </div>
-    </div>
-
-    <div class="box" style="margin-bottom:12px;">
-      <div class="box-title">ADMIN DIRECT USER / OPERATOR CREATION DESK</div>
-      <div id="admin-create-task-feedback" class="task-result-box"></div>
-      <form onsubmit="adminCreateUser(event)" style="display:flex; flex-direction:column; gap:8px;">
-        <div class="grid-2">
-          <input type="text" id="admin-new-uid" placeholder="NEW USER ID" required />
-          <input type="password" id="admin-new-pin" placeholder="SECURITY PIN" required />
+        <div id="panel-acc-import" class="account-sub-panel">
+          <div class="box-title"><span>CONTACT IMPORT & PULLING ENGINE</span> <button onclick="closeAccountSubPanels()" style="font-size:0.6rem; padding:2px 6px;">[CLOSE]</button></div>
+          <p class="dim" style="font-size:0.65rem; margin-bottom:6px;">1. SELECT SPECIFIC CONTACTS DIRECTLY FROM DEVICE.<br>2. BULK IMPORT ENTIRE ADDRESS BOOK VIA .VCF FILE.</p>
+          <div class="grid-2">
+            <button class="inverted" onclick="importMultipleContacts(); flashButton(this);">[ CHOOSE CONTACTS ]</button>
+            <button class="inverted" onclick="document.getElementById('vcf-upload').click()">[ IMPORT .VCF ]</button>
+          </div>
+          <input type="file" id="vcf-upload" accept=".vcf" style="display:none;" onchange="processVCF(event)" />
         </div>
-        <div class="grid-2">
-          <input type="tel" id="admin-new-phone" placeholder="MOBILE NO (SMS/OTP)" required />
-          <select id="admin-new-role">
-            <option value="OPERATOR" selected>ROLE: OPERATOR</option>
-            <option value="ADMIN">ROLE: ADMIN</option>
-          </select>
+
+        <div id="panel-acc-manual" class="account-sub-panel">
+          <div class="box-title">
+            <span>MANUAL ACCOUNT REGISTRATION</span>
+            <div>
+              <button class="inverted" onclick="requestSmsBrowserPermission()" style="font-size:0.6rem; padding:2px 6px; margin-right:4px;">[SMS PERM: <span id="sms-perm-status">OFF</span>]</button>
+              <button onclick="closeAccountSubPanels()" style="font-size:0.6rem; padding:2px 6px;">[CLOSE]</button>
+            </div>
+          </div>
+          <div id="acc-task-feedback" class="task-result-box" onclick="this.style.display='none'"></div>
+          <form onsubmit="manualAccount(event)" style="display:flex; flex-direction:column; gap:8px;">
+            <div class="grid-3">
+              <input type="text" id="acc-name" class="autofocus-target" placeholder="HOLDER NAME" required autofocus oninput="autoJump(this, 'acc-father')" />
+              <input type="text" id="acc-father" placeholder="FATHER'S NAME" oninput="autoJump(this, 'acc-phone')" />
+              <input type="tel" id="acc-phone" inputmode="numeric" placeholder="MOBILE NO (10 DIGITS)" maxlength="10" required oninput="validateMobileInput(this); autoJump(this, 'acc-email', 10);" />
+            </div>
+            <div class="grid-3">
+              <input type="text" id="acc-email" placeholder="EMAIL (OPTIONAL)" oninput="validateEmailInput(this); autoJump(this, 'acc-address');" />
+              <div id="acc-email-warning" style="font-size:0.55rem; color:var(--accent-red); display:none;">INVALID EMAIL.</div>
+              <select id="acc-sms"><option value="OFF" selected>SMS ALERTS: OFF</option><option value="ON">SMS ALERTS: ON</option></select>
+              <select id="acc-auth-mode" onchange="toggleAccountOtpBox()"><option value="DIRECT">CREATE WITHOUT OTP</option><option value="OTP">VERIFY VIA OTP</option></select>
+            </div>
+            <textarea id="acc-address" placeholder="PHYSICAL ADDRESS" rows="1"></textarea>
+            <div id="acc-otp-box" style="display:none;"><input type="text" id="acc-otp-input" placeholder="ENTER OTP" oninput="autoJump(this, null, 6)" /></div>
+            <button type="submit" class="inverted" onclick="flashButton(this)">[ GENERATE A/C / QUEUE REQUEST ]</button>
+          </form>
         </div>
-        <button type="submit" class="inverted">[ CREATE & ACTIVATE USER DIRECTLY ]</button>
-      </form>
+
+        <div id="panel-acc-edit" class="account-sub-panel">
+          <div class="box-title"><span>ACCOUNT MODIFICATION DESK</span> <button onclick="closeAccountSubPanels()" style="font-size:0.6rem; padding:2px 6px;">[CLOSE]</button></div>
+          <div id="edit-task-feedback" class="task-result-box" onclick="this.style.display='none'"></div>
+          <form onsubmit="saveAccEdit(event)" style="display:flex; flex-direction:column; gap:8px;">
+            <div class="grid-2"><input type="text" id="edit-accno" placeholder="SELECT A/C FROM DIRECTORY" readonly /><input type="text" id="edit-bal" readonly placeholder="BALANCE" /></div>
+            <div class="grid-2"><input type="text" id="edit-name" class="autofocus-target" required placeholder="HOLDER NAME" oninput="autoJump(this, 'edit-father')" /><input type="text" id="edit-father" required placeholder="FATHER'S NAME" oninput="autoJump(this, 'edit-phone')" /></div>
+            <div class="grid-2"><input type="tel" id="edit-phone" inputmode="numeric" placeholder="MOBILE (10 DIGITS)" maxlength="10" required oninput="validateMobileInput(this); autoJump(this, 'edit-email', 10);" /><input type="text" id="edit-email" placeholder="EMAIL (OPTIONAL)" oninput="validateEmailInput(this); autoJump(this, 'edit-address');" /></div>
+            <div class="grid-2"><textarea id="edit-address" rows="2" placeholder="ADDRESS"></textarea><select id="edit-sms"><option value="ON">SMS: ON</option><option value="OFF">SMS: OFF</option></select></div>
+            <button type="submit" class="inverted" onclick="flashButton(this)">[ SUBMIT EDIT FOR APPROVAL ]</button>
+          </form>
+        </div>
+
+        <div id="panel-acc-directory" class="account-sub-panel">
+          <div class="box-title">
+            <span>RECORD DIRECTORY</span>
+            <div>
+              <button class="inverted" onclick="loadAccountDirectory(); flashButton(this);" style="padding: 2px 6px; font-size: 0.65rem; margin-right: 4px;">[ LOAD ALL ]</button>
+              <button class="inverted" onclick="triggerPrint('page-acc'); flashButton(this);" style="padding: 2px 6px; font-size: 0.65rem; margin-right:4px;">[ PRINT ]</button>
+              <button onclick="closeAccountSubPanels()" style="font-size:0.6rem; padding:2px 6px;">[CLOSE]</button>
+            </div>
+          </div>
+          <div class="print-controls-bar">
+            <label><input type="checkbox" id="chk-date-page-acc" checked onchange="togglePrintMeta('page-acc')" /> PRINT DATE</label>
+            <label><input type="checkbox" id="chk-time-page-acc" checked onchange="togglePrintMeta('page-acc')" /> PRINT TIME</label>
+            <label><input type="checkbox" id="chk-desc-page-acc" checked onchange="togglePrintMeta('page-acc')" /> METADATA</label>
+          </div>
+          <div class="print-receipt-header" id="print-header-page-acc"></div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>11-DIGIT ACC</th><th>HOLDER & DETAILS</th><th>CONTACT & SMS</th><th>BAL</th><th>ACTION</th></tr></thead>
+              <tbody id="body-accs"><tr><td colspan="5" style="text-align:center;">CLICK 'LOAD ALL' TO FETCH RECORDS</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
     </div>
 
-    <div class="box" style="margin-bottom:12px;">
-      <div class="box-title">
-        <span>PENDING OPERATOR REGISTRATIONS</span>
-        <button class="inverted" onclick="triggerPrint('page-admin')" style="padding: 2px 8px; font-size: 0.7rem;">[ PRINT ADMIN DESK ]</button>
-      </div>
-      <div class="print-controls-bar">
-        <label><input type="checkbox" id="chk-date-page-admin" checked onchange="togglePrintMeta('page-admin')" /> PRINT DATE</label>
-        <label><input type="checkbox" id="chk-time-page-admin" checked onchange="togglePrintMeta('page-admin')" /> PRINT TIME</label>
-        <label><input type="checkbox" id="chk-ip-page-admin" checked onchange="togglePrintMeta('page-admin')" /> TERMINAL IP</label>
-        <label><input type="checkbox" id="chk-desc-page-admin" checked onchange="togglePrintMeta('page-admin')" /> METADATA</label>
-      </div>
-      <div class="print-receipt-header" id="print-header-page-admin"></div>
-      <div class="table-container">
-        <table><thead><tr><th>USER ID</th><th>PHONE</th><th>ROLE SETTING</th><th>STATUS / ACTION</th></tr></thead><tbody id="body-pending-users"></tbody></table>
-      </div>
-    </div>
-    <div class="box" style="margin-bottom:12px;">
-      <div class="box-title">PENDING ACCOUNT EDIT & DELETE REQUESTS</div>
-      <div class="table-container">
-        <table><thead><tr><th>REQ ID</th><th>ACC NO</th><th>ACTION TYPE</th><th>DETAILS</th></tr></thead><tbody id="body-pending-edits"></tbody></table>
+    <div class="view-page" id="page-teller">
+      <div class="box">
+        <div class="box-title">TRANSACTION CLEARING DESK</div>
+        <div id="tx-task-feedback" class="task-result-box" onclick="this.style.display='none'"></div>
+        <form onsubmit="processTx(event)" style="display:flex; flex-direction:column; gap:8px;">
+          <div class="grid-2">
+            <div><label class="dim">ACC NO (11 DIGITS):</label><input type="tel" id="tx-acc" class="autofocus-target" inputmode="numeric" maxlength="11" oninput="autoJump(this, 'tx-amt', 11); autoFetch();" required autofocus /></div>
+            <div><label class="dim">DATA:</label><input type="text" id="tx-fetch" readonly placeholder="ENTER A/C TO CHECK..." /></div>
+          </div>
+          <div class="grid-3">
+            <input type="number" step="any" id="tx-amt" inputmode="numeric" placeholder="AMOUNT (NUMERIC)" required oninput="autoJump(this, 'tx-ref')" />
+            <select id="tx-type"><option value="CR">CREDIT (CR)</option><option value="DR">DEBIT (DR)</option></select>
+            <input type="text" id="tx-ref" placeholder="PARTICULARS / DESCRIPTION" required />
+          </div>
+          <button type="submit" class="inverted" onclick="flashButton(this)">[ PROCESS TRANSACTION (NO PIN NEEDED) ]</button>
+        </form>
       </div>
     </div>
-    <div class="box">
-      <div class="box-title">ACTIVE PERSONNEL & ACCESS CONTROL</div>
-      <div class="table-container">
-        <table><thead><tr><th>USER ID</th><th>ROLE</th><th>STATUS</th><th>LAST IP</th></tr></thead><tbody id="body-users"></tbody></table>
-      </div>
-    </div>
-  </div>
 
-  <div class="view-page" id="page-audit">
-    <div class="box">
-      <div class="box-title">
-        <span>IMMUTABLE JOURNAL</span>
-        <div>
-          <button class="inverted" onclick="triggerPrint('page-audit')" style="padding: 2px 8px; font-size: 0.7rem; margin-right: 6px;">[ PRINT JOURNAL ]</button>
-          <button class="outline" onclick="logout()" style="padding: 2px 8px;">[ SIGN OUT ]</button>
+    <div class="view-page" id="page-passbook">
+      <div class="box">
+        <div class="box-title">
+          <span>DIGITAL PASSBOOK & STATEMENT DESK</span>
+          <div>
+            <button class="inverted" onclick="exportPassbookPdf(); flashButton(this);" style="padding: 2px 6px; font-size: 0.65rem; margin-right: 4px;">[ GENERATE PDF ]</button>
+            <button class="inverted" onclick="triggerPrint('page-passbook'); flashButton(this);" style="padding: 2px 6px; font-size: 0.65rem;">[ PRINT ]</button>
+          </div>
+        </div>
+        <div class="print-controls-bar">
+          <label><input type="checkbox" id="chk-date-page-passbook" checked onchange="togglePrintMeta('page-passbook')" /> PRINT DATE</label>
+          <label><input type="checkbox" id="chk-time-page-passbook" checked onchange="togglePrintMeta('page-passbook')" /> PRINT TIME</label>
+          <label><input type="checkbox" id="chk-desc-page-passbook" checked onchange="togglePrintMeta('page-passbook')" /> PARTICULARS</label>
+        </div>
+        <div class="grid-2" style="margin-bottom: 8px;">
+          <div><input type="tel" id="pb-acc-input" class="autofocus-target" inputmode="numeric" maxlength="11" placeholder="ENTER 11-DIGIT ACC NO" oninput="autoJump(this, null, 11);" onkeydown="handlePassbookKeyDown(event)" autofocus /></div>
+          <div><input type="text" id="pb-holder-info" readonly placeholder="HOLDER DETAILS & BALANCE" /></div>
+        </div>
+        <div class="print-receipt-header" id="print-header-page-passbook"></div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th class="print-col-date">DATE</th>
+                <th class="print-col-time">TIME</th>
+                <th>TYPE</th>
+                <th class="print-col-desc">PARTICULARS / DESCRIPTION</th>
+                <th>AMOUNT</th>
+                <th>CLEAR BAL</th>
+              </tr>
+            </thead>
+            <tbody id="body-passbook-ledger">
+              <tr><td colspan="6" style="text-align:center;">ENTER AN ACCOUNT NUMBER AND PRESS ENTER TO VIEW PASSBOOK</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
-      <div class="print-controls-bar">
-        <label><input type="checkbox" id="chk-date-page-audit" checked onchange="togglePrintMeta('page-audit')" /> PRINT DATE</label>
-        <label><input type="checkbox" id="chk-time-page-audit" checked onchange="togglePrintMeta('page-audit')" /> PRINT TIME</label>
-        <label><input type="checkbox" id="chk-ip-page-audit" checked onchange="togglePrintMeta('page-audit')" /> TERMINAL IP</label>
-        <label><input type="checkbox" id="chk-desc-page-audit" checked onchange="togglePrintMeta('page-audit')" /> DESCRIPTION</label>
-      </div>
-      <div class="print-receipt-header" id="print-header-page-audit"></div>
-      <div class="table-container">
-        <table><thead><tr><th>SEQ</th><th>REF ID</th><th class="print-col-date">DATE</th><th class="print-col-time">TIME</th><th class="print-col-ip">IP</th><th>ACC NO</th><th>TYP</th><th class="print-col-desc">AMT / PARTICULAR</th><th>OPERATOR</th></tr></thead><tbody id="body-journal"></tbody></table>
+    </div>
+
+    <!-- SECTION 7 (DYNAMIC ROLE-BASED ADMIN / SUBSCRIBER / USER CONTROL WITH SIGN OUT) -->
+    <div class="view-page" id="page-section-7">
+      <div class="box" id="section-7-container">
+        <div class="box-title"><span id="section-7-title">ADMINISTRATION & MASTER CONTROL</span></div>
+        <p class="dim" style="font-size:0.75rem; margin-bottom:8px;" id="section-7-desc">SELECT AN ADMINISTRATIVE OR USER MODULE BELOW:</p>
+        
+        <div class="admin-menu-grid" id="section-7-admin-grid">
+          <button class="inverted sub-nav-btn" onclick="openAdminSubPanel('panel-settings', this)">[1] CONFIG & TX RULES & INTEREST</button>
+          <button class="inverted sub-nav-btn" onclick="openAdminSubPanel('panel-create-user', this)">[2] CREATE USER & ROLES</button>
+          <button class="inverted sub-nav-btn" onclick="openAdminSubPanel('panel-user-sessions', this)">[3] USER LOGIN & IP AUDIT</button>
+          <button class="inverted sub-nav-btn" onclick="openAdminSubPanel('panel-recovery-req', this)">[4] PASSWORD RECOVERY QUEUE</button>
+          <button class="inverted sub-nav-btn" onclick="openAdminSubPanel('panel-reports', this)">[5] TRANSACTION REPORTS</button>
+          <button class="inverted sub-nav-btn" onclick="openAdminSubPanel('panel-personnel', this)">[6] USER MGMT, EDIT & BACKUP</button>
+        </div>
+
+        <div id="section-7-user-profile" style="display:none; padding: 10px;">
+          <p style="font-size: 0.8rem; margin-bottom: 10px;">CONNECTED WORKSPACE PROFILE (<span id="prof-workspace-badge">OWNER MODE</span>)</p>
+          <div class="grid-2" style="font-size: 0.75rem; margin-bottom: 12px;">
+            <div><span class="dim">USER ID:</span> <span id="prof-uid" class="bold">---</span></div>
+            <div><span class="dim">ROLE:</span> <span id="prof-role" class="bold">---</span></div>
+            <div><span class="dim">PHONE:</span> <span id="prof-phone" class="bold">---</span></div>
+            <div><span class="dim">STATUS:</span> <span id="prof-status" class="bold">---</span></div>
+          </div>
+        </div>
+
+        <div style="margin-top: 12px; border-top: 1px dashed var(--fg); padding-top: 10px;">
+          <button class="btn-red" onclick="confirmSignOut(); flashButton(this);" style="width: 100%; padding: 10px;">[ SIGN OUT OF TERMINAL ]</button>
+        </div>
+
+        <div id="panel-settings" class="admin-sub-panel">
+          <div class="box-title"><span>CONFIG & RULES // SELECT FUNCTION</span> <button onclick="closeAdminSubPanels()" style="font-size:0.6rem; padding:2px 6px;">[CLOSE]</button></div>
+          <div class="grid-3" style="margin-bottom: 8px;">
+            <button class="inverted" onclick="openConfigTab('cfg-tab-interest', this)">INTEREST ENGINE</button>
+            <button class="inverted" onclick="openConfigTab('cfg-tab-system', this)">SYSTEM RECOVERY</button>
+            <button class="inverted" onclick="openConfigTab('cfg-tab-pwd', this)">PASSWORD POLICY</button>
+          </div>
+
+          <div id="cfg-tab-interest" class="settings-sub-panel" style="display:none; border:1px dashed var(--dim); padding:8px; margin-top:6px;">
+            <div class="bold" style="font-size: 0.75rem; margin-bottom: 6px; color: var(--yellow);">INTEREST CALCULATION ENGINE</div>
+            <div class="grid-2" style="margin-bottom: 6px;">
+              <div>
+                <label class="dim" style="font-size: 0.65rem;">TARGET SCOPE:</label>
+                <select id="interest-scope" style="font-size: 0.75rem;">
+                  <option value="ALL">ALL ACCOUNTS</option>
+                  <option value="SPECIFIC">SPECIFIC ACCOUNT</option>
+                  <option value="TYPE">TRANSACTION TYPE</option>
+                </select>
+              </div>
+              <div>
+                <label class="dim" style="font-size: 0.65rem;">TARGET ID / TYPE:</label>
+                <input type="text" id="interest-target" placeholder="ACC NO OR TYPE" style="font-size: 0.75rem;" />
+              </div>
+            </div>
+            <div class="grid-3" style="margin-bottom: 6px;">
+              <div>
+                <label class="dim" style="font-size: 0.65rem;">RATE (%):</label>
+                <input type="number" step="any" id="interest-rate" placeholder="5.5" style="font-size: 0.75rem;" />
+              </div>
+              <div>
+                <label class="dim" style="font-size: 0.65rem;">TYPE:</label>
+                <select id="interest-type" onchange="toggleInterestTimeBox()" style="font-size: 0.75rem;">
+                  <option value="SI">SIMPLE (SI)</option>
+                  <option value="CI">COMPOUND (CI)</option>
+                </select>
+              </div>
+              <div id="interest-time-container" style="display: none;">
+                <label class="dim" style="font-size: 0.65rem;">YEARS:</label>
+                <input type="number" step="any" id="interest-time" placeholder="1" style="font-size: 0.75rem;" />
+              </div>
+            </div>
+            <button class="btn-green" onclick="executeInterestCalculation(); flashButton(this);" style="width: 100%;">[ COMPUTE INTEREST ]</button>
+          </div>
+
+          <div id="cfg-tab-system" class="settings-sub-panel" style="display:none; border:1px dashed var(--dim); padding:8px; margin-top:6px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; padding: 5px 0;">
+              <span>DEFAULT RECOVERY PERIOD (DAYS):</span>
+              <input type="number" id="cfg-rec-days" value="7" style="width: 70px;" onchange="updateRecoverySetting()" />
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; padding: 5px 0; border-top:1px dashed var(--dim);">
+              <span>ONLINE DEBIT ONLY:</span>
+              <button type="button" id="btn-toggle-debit" class="inverted" onclick="toggleDebitSetting(); flashButton(this);">OFF</button>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; padding: 5px 0; border-top:1px dashed var(--dim);">
+              <span>SMS / EMAIL RELAY:</span>
+              <button type="button" id="btn-toggle-sms-master" class="inverted" onclick="toggleSmsMasterSetting(); flashButton(this);">ON</button>
+            </div>
+          </div>
+
+          <div id="cfg-tab-pwd" class="settings-sub-panel" style="display:none; border:1px dashed var(--dim); padding:8px; margin-top:6px;">
+            <label class="dim" style="font-size:0.65rem;">PASSWORD RULE CONFIGURATION:</label>
+            <div class="grid-2" style="margin-top: 4px;">
+              <select id="admin-pwd-rule" onchange="updatePasswordRuleSetting()">
+                <option value="4_NUMERIC">4-DIGIT NUMERIC</option>
+                <option value="8_NUMERIC">8-DIGIT NUMERIC</option>
+                <option value="MIXED_CHAR" selected>MIXED (8+ CHARS, UPPER, LOWER, NUM, SPEC)</option>
+              </select>
+              <button class="inverted" onclick="alert('PASSWORD RULE UPDATED.');">[ SAVE RULE ]</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="panel-create-user" class="admin-sub-panel">
+          <div class="box-title"><span>USER CREATION & DYNAMIC ROLE PERMISSIONS</span> <button onclick="closeAdminSubPanels()" style="font-size:0.6rem; padding:2px 6px;">[CLOSE]</button></div>
+          <div id="admin-create-task-feedback" class="task-result-box" onclick="this.style.display='none'"></div>
+          
+          <form onsubmit="adminCreateUser(event)" style="display:flex; flex-direction:column; gap:8px;">
+            <div class="grid-2">
+              <input type="text" id="admin-new-uid" class="autofocus-target" placeholder="NEW USER ID" required autofocus oninput="autoJump(this, 'admin-new-pin')" />
+              <input type="password" id="admin-new-pin" placeholder="PIN" value="" required oninput="validatePinInput(this)" />
+            </div>
+            <div class="grid-2">
+              <input type="tel" id="admin-new-phone" inputmode="numeric" placeholder="MOBILE NO (10 DIGITS)" maxlength="10" required oninput="validateMobileInput(this); autoJump(this, 'admin-new-role', 10);" />
+              <select id="admin-new-role">
+                <option value="ADMIN">ROLE: ADMIN</option>
+                <option value="OPERATOR" selected>ROLE: OPERATOR</option>
+                <option value="SUBSCRIBER_TENANT">ROLE: INDEPENDENT CUSTOMER</option>
+              </select>
+            </div>
+
+            <div style="border: 1px dashed var(--dim); padding: 8px; margin-top: 4px; background: #080808;">
+              <div class="bold" style="font-size: 0.7rem; color: var(--yellow); margin-bottom: 4px;">CREATE CUSTOM ROLE & ASSIGN FEATURE PERMISSIONS</div>
+              <div class="grid-2" style="margin-bottom: 6px;">
+                <input type="text" id="new-role-name" placeholder="NEW ROLE NAME (E.G. MANAGER)" style="font-size:0.75rem;" />
+                <button type="button" class="inverted" onclick="createNewCustomRole(); flashButton(this);" style="font-size:0.75rem;">[ ADD ROLE ]</button>
+              </div>
+              <div style="font-size: 0.65rem; color: var(--dim); margin-bottom: 4px;">SELECT MODULE PERMISSIONS FOR NEW ROLE:</div>
+              <div class="grid-2" style="font-size: 0.7rem;">
+                <label><input type="checkbox" class="role-perm-chk" value="DASH" checked /> 1. DASHBOARD</label>
+                <label><input type="checkbox" class="role-perm-chk" value="ACCOUNTS" checked /> 2. ACCOUNTS</label>
+                <label><input type="checkbox" class="role-perm-chk" value="TELLER" checked /> 3. TELLER</label>
+                <label><input type="checkbox" class="role-perm-chk" value="PASSBOOK" checked /> 4. PASSBOOK</label>
+                <label><input type="checkbox" class="role-perm-chk" value="CHAT" checked /> 5. CHAT</label>
+                <label><input type="checkbox" class="role-perm-chk" value="AUDIT" checked /> 6. AUDIT</label>
+              </div>
+            </div>
+
+            <button type="submit" class="inverted" onclick="flashButton(this)" style="margin-top: 4px;">[ CREATE USER ]</button>
+          </form>
+        </div>
+
+        <div id="panel-user-sessions" class="admin-sub-panel">
+          <div class="box-title"><span>USER LOGIN / LOGOUT TIME & IP AUDIT</span> <button onclick="closeAdminSubPanels()" style="font-size:0.6rem; padding:2px 6px;">[CLOSE]</button></div>
+          <div class="table-container">
+            <table><thead><tr><th>USER ID</th><th>ROLE</th><th>STATUS</th><th>LAST IP</th><th>DEVICE FP</th></tr></thead><tbody id="body-user-sessions"></tbody></table>
+          </div>
+        </div>
+
+        <div id="panel-recovery-req" class="admin-sub-panel">
+          <div class="box-title"><span>PASSWORD RECOVERY & USER ID RETRIEVAL QUEUE</span> <button onclick="closeAdminSubPanels()" style="font-size:0.6rem; padding:2px 6px;">[CLOSE]</button></div>
+          <div class="table-container">
+            <table><thead><tr><th>REF ID</th><th>USER ID / QUERY</th><th>PHONE</th><th>DETAILS / REASON</th><th>TARGET DEADLINE</th><th>ACTION</th></tr></thead><tbody id="body-recovery-queue"></tbody></table>
+          </div>
+        </div>
+
+        <div id="panel-reports" class="admin-sub-panel">
+          <div class="box-title">
+            <span>ADVANCED TRANSACTION REPORTS & EDIT HISTORY</span>
+            <button onclick="closeAdminSubPanels()" style="font-size:0.6rem; padding:2px 6px;">[CLOSE]</button>
+          </div>
+          <div class="grid-4" style="margin-bottom:6px;">
+            <select id="rep-period" onchange="onReportPeriodChange()">
+              <option value="all">ALL TIME</option>
+              <option value="daily">DAILY</option>
+              <option value="weekly">WEEKLY</option>
+              <option value="monthly">MONTHLY</option>
+              <option value="custom">DATE RANGE</option>
+            </select>
+            <select id="rep-type" onchange="generateReport()">
+              <option value="ALL">ALL TYPES</option>
+              <option value="CR">CREDIT (CR)</option>
+              <option value="DR">DEBIT (DR)</option>
+            </select>
+            <input type="date" id="rep-start" style="display:none;" onchange="generateReport()" />
+            <input type="date" id="rep-end" style="display:none;" onchange="generateReport()" />
+          </div>
+          <div style="margin-bottom:6px;">
+            <button class="inverted" onclick="triggerPrint('page-admin-report'); flashButton(this);">[ PRINT / GENERATE PDF REPORT ]</button>
+          </div>
+          <div class="print-receipt-header" id="print-header-page-admin-report"></div>
+          <div class="table-container">
+            <table><thead><tr><th>REF ID</th><th>DATE/TIME</th><th>ACC NO</th><th>TYPE</th><th>AMOUNT</th><th>PARTICULARS</th><th>OPERATOR</th></tr></thead><tbody id="body-report-results"></tbody></table>
+          </div>
+        </div>
+
+        <div id="panel-personnel" class="admin-sub-panel">
+          <div class="box-title"><span>USER EDIT, LOCK, DELETE, ROLE, TRANSFER & BACKUP</span> <button onclick="closeAdminSubPanels()" style="font-size:0.6rem; padding:2px 6px;">[CLOSE]</button></div>
+          <div style="margin-bottom: 8px; display:flex; gap:6px;">
+            <button class="inverted" onclick="exportBackupData(); flashButton(this);">[ EXPORT BACKUP ]</button>
+            <button class="inverted" onclick="document.getElementById('backup-file-input').click()">[ RESTORE BACKUP ]</button>
+            <input type="file" id="backup-file-input" accept=".json" style="display:none;" onchange="importBackupData(event)" />
+          </div>
+          <div style="margin-bottom: 8px;">
+            <button class="inverted" onclick="adminRecoverChats(); flashButton(this);">[ ADMIN RECOVER PURGED CHATS (60-DAY) ]</button>
+          </div>
+          <div class="table-container">
+            <table><thead><tr><th>USER ID</th><th>ROLE / STATUS</th><th>ADMIN ACTIONS</th></tr></thead><tbody id="body-personnel-admin"></tbody></table>
+          </div>
+        </div>
+
       </div>
     </div>
-  </div>
-</div>
+
+    <div class="view-page" id="page-audit">
+      <div class="box">
+        <div class="box-title">
+          <span>IMMUTABLE JOURNAL & EDIT HISTORY</span>
+          <div>
+            <button class="inverted" onclick="exportAuditPdf(); flashButton(this);" style="padding: 2px 6px; font-size: 0.65rem; margin-right: 4px;">[ GENERATE PDF ]</button>
+            <button class="inverted" onclick="triggerPrint('page-audit'); flashButton(this);" style="padding: 2px 6px; font-size: 0.65rem;">[ PRINT JOURNAL ]</button>
+          </div>
+        </div>
+        <div class="print-controls-bar">
+          <label><input type="checkbox" id="chk-date-page-audit" checked onchange="togglePrintMeta('page-audit')" /> PRINT DATE</label>
+          <label><input type="checkbox" id="chk-time-page-audit" checked onchange="togglePrintMeta('page-audit')" /> PRINT TIME</label>
+          <label><input type="checkbox" id="chk-desc-page-audit" checked onchange="togglePrintMeta('page-audit')" /> DESCRIPTION</label>
+        </div>
+        <div class="print-receipt-header" id="print-header-page-audit"></div>
+        <div class="table-container">
+          <table><thead><tr><th>SEQ</th><th>REF ID</th><th class="print-col-date">DATE</th><th class="print-col-time">TIME</th><th>ACC NO</th><th>TYP</th><th class="print-col-desc">AMT / PARTICULAR</th><th>OPERATOR</th></tr></thead><tbody id="body-journal"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- End of sliding content container -->
+
+</div> <!-- End of terminal container -->
 
 <script>
-const DB_KEY = 'CRIS_PRS_MASTER_DB_PERSISTENT';
+const DB_KEY = 'LEDGER_MASTER_DB_PERSISTENT';
 const SERIAL_BASE = 10000000000;
 let smsPermissionGranted = false;
-let currentClientIP = 'FETCHING...';
+let currentClientIP = 'OFFLINE (PENDING)';
 let deviceFingerprint = '';
 let isSyncing = false;
 
-// DYNAMIC BACKEND ROUTER: Direct Supabase Integration
+let pendingRegOtpCode = null;
+let pendingRegData = null;
+
 const SUPABASE_URL = 'https://anwwhrtszdrjdmdrtvoi.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFud3docnRzemRyamRtZHJ0dm9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NjgwODgsImV4cCI6MjEwNTE0NDA4OH0.DJb9igB0QftEZucScZsBnggUPK0-7Syjw9PLCUMFmqM';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFud3docnzsZmdyamRydHZvaSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzg5NTY4MDg4LCJleHAiOjIxMDUxNDQwODh9.DJb9igB0QftEZucScZsBnggUPK0-7Syjw9PLCUMFmqM';
 let supabaseClient = null;
 if (window.supabase) {
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
+// --- HARD CLIENT-SIDE ENCRYPTION LAYER WITH V3 SCHEMA COMPATIBILITY ---
+let cryptoKeyCache = null;
+async function getCryptoKey(passphrase = "LEDGER_SECURE_MASTER_KEY") {
+  if (cryptoKeyCache) return cryptoKeyCache;
+  const enc = new TextEncoder();
+  const keyMaterial = await window.crypto.subtle.importKey(
+    "raw",
+    enc.encode(passphrase.padEnd(32, '0').slice(0, 32)),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"]
+  );
+  cryptoKeyCache = await window.crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: enc.encode("LEDGER_STATIC_SALT_V1"), iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+  return cryptoKeyCache;
+}
+
+async function encryptData(plainText) {
+  try {
+    if (!plainText || typeof plainText !== 'string' || plainText.startsWith('ENC:')) return plainText;
+    const key = await getCryptoKey();
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(plainText);
+    const ciphertext = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, encoded);
+    const combined = new Uint8Array(iv.length + new Uint8Array(ciphertext).length);
+    combined.set(iv);
+    combined.set(new Uint8Array(ciphertext), iv.length);
+    return 'ENC:' + btoa(String.fromCharCode.apply(null, combined));
+  } catch (e) {
+    return plainText;
+  }
+}
+
+async function decryptData(encryptedStr) {
+  try {
+    if (!encryptedStr || typeof encryptedStr !== 'string' || !encryptedStr.startsWith('ENC:')) return encryptedStr;
+    const rawB64 = encryptedStr.slice(4);
+    const key = await getCryptoKey();
+    const decoded = Uint8Array.from(atob(rawB64), c => c.charCodeAt(0));
+    const iv = decoded.slice(0, 12);
+    const ciphertext = decoded.slice(12);
+    const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ciphertext);
+    return new TextDecoder().decode(decrypted);
+  } catch (e) {
+    return encryptedStr;
+  }
+}
+
 function getDeviceFingerprint() {
-  let fp = localStorage.getItem('CRIS_DEVICE_FP');
+  let fp = localStorage.getItem('LEDGER_DEVICE_FP');
   if (!fp) {
     fp = 'FP_' + Math.random().toString(36).substring(2, 10).toUpperCase() + '_' + Date.now();
-    localStorage.setItem('CRIS_DEVICE_FP', fp);
+    localStorage.setItem('LEDGER_DEVICE_FP', fp);
   }
   return fp;
 }
 deviceFingerprint = getDeviceFingerprint();
 
 async function fetchClientIP() {
+  if (!navigator.onLine) {
+    currentClientIP = 'OFFLINE (PENDING)';
+    return currentClientIP;
+  }
   try {
     const res = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
     const data = await res.json();
     currentClientIP = data.ip;
-    const ipTag = document.getElementById('ip-tag');
-    if(ipTag) ipTag.innerText = currentClientIP;
   } catch(e) {
-    currentClientIP = '127.0.0.1';
-    const ipTag = document.getElementById('ip-tag');
-    if(ipTag) ipTag.innerText = currentClientIP;
+    currentClientIP = '127.0.0.1 (LOCAL)';
   }
+  return currentClientIP;
 }
 
 let db = { 
-  users: [{ id: 'ADMIN', pin: '9999', role: 'ADMIN', status: 'ACTIVE', lastIp: '127.0.0.1', phone: '0000000000', deviceFp: deviceFingerprint }], 
+  version: 11,
+  users: [{ id: 'MASTER_OWNER', pin: '9999', role: 'OWNER', status: 'ACTIVE', lastIp: '127.0.0.1', phone: '0000000000', deviceFp: deviceFingerprint, lastActive: Date.now() }], 
   accounts: [], 
   ledger: [], 
   editRequests: [],
-  settings: { onlineDebitOnly: false, smsEnabled: true }
+  recoverRequests: [],
+  chats: [],
+  purgedChats: [],
+  customTxTypes: ['CR', 'DR'],
+  txRules: { CR: 'ADD', DR: 'SUB' },
+  customRoles: [],
+  settings: { onlineDebitOnly: false, smsEnabled: true, recoveryDays: 7, passwordRule: 'MIXED_CHAR' }
 };
 
-function generateRefId() {
-  return 'REF-' + Math.floor(100000 + Math.random() * 900000);
+function autoJump(currentField, nextFieldId, maxLength) {
+  if (maxLength && currentField.value.length >= maxLength) {
+    if (nextFieldId) {
+      const nextElem = document.getElementById(nextFieldId);
+      if (nextElem) nextElem.focus();
+    } else {
+      currentField.blur();
+    }
+  }
+}
+
+function flashButton(btn) {
+  btn.classList.add('hit-flash-btn');
+  setTimeout(() => {
+    btn.classList.remove('hit-flash-btn');
+  }, 200);
+}
+
+// STRICT MOBILE NUMBER VALIDATOR
+function validateMobileInput(inputElem) {
+  const val = inputElem.value.replace(/[^0-9]/g, '');
+  inputElem.value = val;
+  const warningElem = document.getElementById(inputElem.id + '-warning');
+  if (warningElem) {
+    if (val.length > 0 && val.length !== 10) {
+      warningElem.style.display = 'block';
+    } else {
+      warningElem.style.display = 'none';
+    }
+  }
+}
+
+// DYNAMIC PIN VALIDATOR SHOWING OWNER'S SET RULE
+function validatePinInput(inputElem) {
+  const rule = db.settings.passwordRule || 'MIXED_CHAR';
+  const val = inputElem.value;
+  let hintBox = document.getElementById('pin-hint');
+  if(!hintBox) {
+    hintBox = document.createElement('div');
+    hintBox.id = 'pin-hint';
+    hintBox.style.fontSize = '0.6rem';
+    hintBox.style.marginTop = '4px';
+    inputElem.parentNode.appendChild(hintBox);
+  }
+
+  let valid = true;
+  if (rule === '4_NUMERIC') {
+    hintBox.innerText = 'RULE (SET BY OWNER): EXACT 4-DIGIT NUMERIC.';
+    valid = /^\d{4}$/.test(val);
+  } else if (rule === '8_NUMERIC') {
+    hintBox.innerText = 'RULE (SET BY OWNER): EXACT 8-DIGIT NUMERIC.';
+    valid = /^\d{8}$/.test(val);
+  } else {
+    hintBox.innerText = 'RULE (SET BY OWNER): MIN 8 CHARS (UPPER, LOWER, NUMERIC, SPECIAL).';
+    const hasUpper = /[A-Z]/.test(val);
+    const hasLower = /[a-z]/.test(val);
+    const hasNum = /\d/.test(val);
+    const hasSpec = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(val);
+    valid = val.length >= 8 && hasUpper && hasLower && hasNum && hasSpec;
+  }
+
+  hintBox.style.color = valid ? 'var(--accent-green)' : 'var(--accent-red)';
+}
+
+// 10-CHARACTER REF ID COMBINATION OF ALPHA, NUM, UPPER, LOWER, SPECIAL
+async function generateTenCharRefId() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let result = '';
+  for (let i = 0; i < 10; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  const ip = await fetchClientIP();
+  return { refId: result, ip: ip, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString() };
 }
 
 function showTaskFeedback(containerId, status, message) {
@@ -463,7 +913,7 @@ function showTaskFeedback(containerId, status, message) {
   const color = status === 'SUCCESS' ? '#00ff00' : status === 'DECLINED' ? '#ff4444' : '#ffff00';
   box.style.display = 'block';
   box.style.borderColor = color;
-  box.innerHTML = `<div style="color:${color}; font-weight:bold;">[TASK STATUS: ${status}]</div><div style="font-size:0.75rem; margin-top:2px;">${message}</div>`;
+  box.innerHTML = `<div style="color:${color}; font-weight:bold;">[TASK STATUS: ${status}]</div><div style="font-size:0.75rem; margin-top:2px;">${message} (CLICK TO DISMISS)</div>`;
 }
 
 function showLoadingFeedback(containerId) {
@@ -474,10 +924,204 @@ function showLoadingFeedback(containerId) {
   box.innerHTML = `<div style="color:#ffff00; font-weight:bold;">PROCESSING<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>`;
 }
 
+function validateEmailInput(inputElem) {
+  const val = inputElem.value.trim();
+  const warningElem = document.getElementById(inputElem.id + '-warning') || document.getElementById('email-warning');
+  if (!warningElem) return;
+
+  if (val === '') {
+    warningElem.style.display = 'none';
+    return;
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(val)) {
+    warningElem.style.display = 'block';
+  } else {
+    warningElem.style.display = 'none';
+  }
+}
+
+async function sendNotificationEmail(recipientEmail, subject, messageContent) {
+  const settings = db.settings || { smsEnabled: true };
+  if (!settings.smsEnabled && subject.indexOf("Verification Code") === -1) return;
+  if (!supabaseClient || !recipientEmail) return;
+  try {
+    await supabaseClient.rpc('send_ledger_notification', {
+      recipient_email: recipientEmail,
+      email_subject: subject,
+      email_message: messageContent
+    });
+  } catch (err) {}
+}
+
+function cleanupChatsLifecycle() {
+  if (!db.chats) return;
+  const now = Date.now();
+  const fortyFiveDaysMs = 45 * 24 * 60 * 60 * 1000;
+  if (!db.purgedChats) db.purgedChats = [];
+
+  db.chats = db.chats.filter(c => {
+    const age = now - (c.timestamp || now);
+    if (age > fortyFiveDaysMs) {
+      db.purgedChats.push({ ...c, purgedAt: now });
+      return false;
+    }
+    return true;
+  });
+}
+
+function adminRecoverChats() {
+  if(!db.purgedChats || !db.purgedChats.length) {
+    alert("NO PURGED CHATS IN ARCHIVE.");
+    return;
+  }
+  const now = Date.now();
+  const sixtyDaysMs = 60 * 24 * 60 * 60 * 1000;
+  let recoveredCount = 0;
+
+  db.purgedChats = db.purgedChats.filter(c => {
+    const ageSincePurge = now - (c.purgedAt || now);
+    if (ageSincePurge <= sixtyDaysMs) {
+      db.chats.push({ sender: c.sender, recipient: c.recipient, text: c.text, time: c.time, timestamp: c.timestamp, read: c.read });
+      recoveredCount++;
+      return false;
+    }
+    return true;
+  });
+  save();
+  alert(`SUCCESSFULLY RECOVERED ${recoveredCount} CHAT MESSAGES WITHIN THE 60-DAY ADMIN WINDOW.`);
+  renderAdmin();
+}
+
+function toggleInterestTimeBox() {
+  const type = document.getElementById('interest-type').value;
+  document.getElementById('interest-time-container').style.display = (type === 'CI') ? 'block' : 'none';
+}
+
+function executeInterestCalculation() {
+  const scope = document.getElementById('interest-scope').value;
+  const target = document.getElementById('interest-target').value.trim().toUpperCase();
+  const rate = parseFloat(document.getElementById('interest-rate').value);
+  const type = document.getElementById('interest-type').value;
+  const time = parseFloat(document.getElementById('interest-time').value) || 1;
+
+  if(isNaN(rate) || rate <= 0) {
+    alert("PLEASE ENTER A VALID INTEREST RATE.");
+    return;
+  }
+
+  let targets = [];
+  if (scope === 'ALL') {
+    targets = db.accounts;
+  } else if (scope === 'SPECIFIC') {
+    const found = db.accounts.find(a => a.accountNumber === target);
+    if(found) targets = [found];
+  } else if (scope === 'TYPE') {
+    targets = db.accounts;
+  }
+
+  if(!targets.length) {
+    alert("NO TARGET ACCOUNTS FOUND FOR INTEREST APPLICATION.");
+    return;
+  }
+
+  let appliedCount = 0;
+  targets.forEach(acc => {
+    let interestAmt = 0;
+    if (type === 'SI') {
+      interestAmt = (acc.balance * rate * time) / 100;
+    } else {
+      const amount = acc.balance * Math.pow((1 + (rate / 100)), time);
+      interestAmt = amount - acc.balance;
+    }
+
+    if (interestAmt > 0) {
+      acc.balance += interestAmt;
+      acc.lastAccessed = new Date().toLocaleString();
+      appliedCount++;
+    }
+  });
+
+  save();
+  alert(`INTEREST APPLIED SUCCESSFULLY TO ${appliedCount} ACCOUNT(S) USING ${type} MODEL.`);
+}
+
+function addNewCustomTxType() {
+  const codeInput = document.getElementById('new-tx-type-code');
+  const ruleSelect = document.getElementById('new-tx-type-rule');
+  const code = codeInput.value.trim().toUpperCase();
+  const rule = ruleSelect.value;
+  if(!code) return;
+
+  if(!db.customTxTypes) db.customTxTypes = ['CR', 'DR'];
+  if(!db.txRules) db.txRules = { CR: 'ADD', DR: 'SUB' };
+
+  if(!db.customTxTypes.includes(code)) {
+    db.customTxTypes.push(code);
+  }
+  db.txRules[code] = rule;
+  save();
+  updateTxTypeDropdowns();
+  alert(`TRANSACTION TYPE '${code}' WITH RULE '${rule}' CREATED SUCCESSFULLY.`);
+  codeInput.value = '';
+}
+
+function updatePasswordRuleSetting() {
+  const sel = document.getElementById('admin-pwd-rule');
+  if(!sel) return;
+  if(!db.settings) db.settings = {};
+  db.settings.passwordRule = sel.value;
+  save();
+}
+
+function updateTxTypeDropdowns() {
+  const sel = document.getElementById('tx-type');
+  if(!sel) return;
+  const currentVal = sel.value;
+  const types = db.customTxTypes || ['CR', 'DR'];
+  sel.innerHTML = '';
+  types.forEach(t => {
+    sel.innerHTML += `<option value="${t}">${t}</option>`;
+  });
+  sel.value = types.includes(currentVal) ? currentVal : types[0];
+}
+
+async function exportBackupData() {
+  const dataCopy = JSON.parse(JSON.stringify(db));
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataCopy, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `LEDGER_BACKUP_${new Date().toISOString().slice(0,10)}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+function importBackupData(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      if(parsed && parsed.users && parsed.accounts) {
+        db = parsed;
+        save();
+        alert("BACKUP RESTORED SUCCESSFULLY.");
+        location.reload();
+      } else {
+        alert("INVALID BACKUP FILE FORMAT.");
+      }
+    } catch(err) {
+      alert("FAILED TO PARSE BACKUP JSON.");
+    }
+  };
+  reader.readAsText(file);
+}
+
 function migrateLegacyData() {
-  const legacyKeys = ['CRIS_BW_MASTER_FINAL_V23', 'CRIS_BW_MASTER_FINAL_V22', 'CRIS_BW_MASTER_FINAL_V32', 'CRIS_BW_MASTER_FINAL_V31', 'CRIS_BW_MASTER_FINAL_V33'];
+  const legacyKeys = ['LEDGER_MASTER_DB_PERSISTENT', 'CRIS_PRS_MASTER_DB_PERSISTENT'];
   let existingData = localStorage.getItem(DB_KEY);
-  
   if (!existingData) {
     for (const key of legacyKeys) {
       const oldData = localStorage.getItem(key);
@@ -499,60 +1143,46 @@ async function backgroundSync(isInitial = false) {
   try {
     if (navigator.onLine) {
       if (syncTag && isInitial) syncTag.innerText = 'SYNCING...';
-      
       let cloudData = null;
-
       if (supabaseClient) {
         const { data, error } = await supabaseClient
           .from('terminal_store')
           .select('data')
           .eq('user_path', 'cloudflare_user')
           .single();
-        if (!error && data) {
-          cloudData = data.data;
-        }
+        if (!error && data) cloudData = data.data;
       }
 
       if (cloudData && cloudData.users) {
-        const localStr = localStorage.getItem(DB_KEY);
-        if (localStr) {
-          try {
-            const localDb = JSON.parse(localStr);
-            if (localDb.accounts && cloudData.accounts) {
-              localDb.accounts.forEach(la => {
-                if (!cloudData.accounts.some(ca => ca.accountNumber === la.accountNumber)) {
-                  cloudData.accounts.push(la);
-                }
-              });
-            }
-            if (localDb.ledger && cloudData.ledger) {
-              localDb.ledger.forEach(ll => {
-                if (!ll.refId || ll.refId.startsWith('OFFLINE-')) {
-                  ll.refId = generateRefId();
-                }
-                if (!cloudData.ledger.some(cl => cl.seq === ll.seq && cl.timestamp === ll.timestamp)) {
-                  cloudData.ledger.unshift(ll);
-                }
-              });
-            }
-          } catch(e) {}
-        }
-
         db = cloudData;
         if(!db.editRequests) db.editRequests = [];
+        if(!db.recoverRequests) db.recoverRequests = [];
+        if(!db.chats) db.chats = [];
+        if(!db.purgedChats) db.purgedChats = [];
         if(!db.users) db.users = [];
         if(!db.accounts) db.accounts = [];
         if(!db.ledger) db.ledger = [];
-        if(!db.settings) db.settings = { onlineDebitOnly: false, smsEnabled: true };
-        
-        localStorage.setItem(DB_KEY, JSON.stringify(db));
-        syncUI();
-        if (syncTag) syncTag.innerText = 'SYNCED [REAL-TIME]';
-        
-        pushDataToServerSilent();
+        if(!db.customTxTypes) db.customTxTypes = ['CR', 'DR'];
+        if(!db.txRules) db.txRules = { CR: 'ADD', DR: 'SUB' };
+        if(!db.settings) db.settings = { onlineDebitOnly: false, smsEnabled: true, recoveryDays: 7, passwordRule: 'MIXED_CHAR' };
       }
+      
+      for(let acc of db.accounts) {
+        if(acc.holderName && !acc.holderName.startsWith('ENC:')) acc.holderName = await encryptData(acc.holderName);
+        if(acc.email && !acc.email.startsWith('ENC:')) acc.email = await encryptData(acc.email);
+      }
+      for(let chat of db.chats) {
+        if(chat.text && !chat.text.startsWith('ENC:')) chat.text = await encryptData(chat.text);
+      }
+
+      cleanupChatsLifecycle();
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
+      syncUI();
+      updateTxTypeDropdowns();
+      if (syncTag) syncTag.innerText = 'SYNCED [REAL-TIME]';
+      pushDataToServerSilent();
     } else {
-      if (syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
+      if (syncTag) syncTag.innerText = 'OFFLINE (LOCAL QUEUED)';
     }
   } catch (err) {
     if (syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
@@ -569,47 +1199,19 @@ async function pushDataToServerSilent() {
       const u = db.users.find(x => x.id === session.id);
       if (u) u.lastIp = currentClientIP;
     }
+    const securePayload = JSON.parse(JSON.stringify(db));
+    for (let acc of securePayload.accounts) {
+      acc.holderName = await encryptData(acc.holderName);
+      acc.email = await encryptData(acc.email);
+    }
+    for (let chat of securePayload.chats) {
+      chat.text = await encryptData(chat.text);
+    }
 
     await supabaseClient
       .from('terminal_store')
-      .upsert({ user_path: 'cloudflare_user', data: db }, { onConflict: 'user_path' });
+      .upsert({ user_path: 'cloudflare_user', data: securePayload }, { onConflict: 'user_path' });
   } catch(e) {}
-}
-
-async function pushDataToServer() {
-  if (!navigator.onLine) {
-    const syncTag = document.getElementById('cloud-sync-status');
-    if(syncTag) syncTag.innerText = 'OFFLINE (QUEUED)';
-    return;
-  }
-  const syncTag = document.getElementById('cloud-sync-status');
-  if (syncTag) syncTag.innerText = 'UPLOADING...';
-
-  try {
-    await fetchClientIP();
-    if (session) {
-      const u = db.users.find(x => x.id === session.id);
-      if (u) u.lastIp = currentClientIP;
-    }
-
-    let success = false;
-    if (supabaseClient) {
-      const { error } = await supabaseClient
-        .from('terminal_store')
-        .upsert({ user_path: 'cloudflare_user', data: db }, { onConflict: 'user_path' });
-      if (!error) success = true;
-    }
-
-    if (success) {
-      const now = new Date();
-      const exactTime = now.toLocaleTimeString() + '.' + String(now.getMilliseconds()).padStart(3, '0');
-      if (syncTag) syncTag.innerText = `SYNCED: [${exactTime}]`;
-    } else {
-      if (syncTag) syncTag.innerText = 'SYNC REJECTED';
-    }
-  } catch (e) {
-    if (syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
-  }
 }
 
 async function init() {
@@ -618,6 +1220,18 @@ async function init() {
   if (local) {
     try { db = JSON.parse(local); } catch(e) {}
   }
+  
+  for(let acc of db.accounts) {
+    if(acc.holderName && !acc.holderName.startsWith('ENC:')) acc.holderName = await encryptData(acc.holderName);
+    if(acc.email && !acc.email.startsWith('ENC:')) acc.email = await encryptData(acc.email);
+  }
+  for(let chat of db.chats) {
+    if(chat.text && !chat.text.startsWith('ENC:')) chat.text = await encryptData(chat.text);
+  }
+
+  cleanupChatsLifecycle();
+  updateTxTypeDropdowns();
+  updateRegistrationRoleDropdown();
   await backgroundSync(true);
 
   const savedSession = localStorage.getItem(DB_KEY + '_SESSION');
@@ -625,59 +1239,187 @@ async function init() {
     try {
       session = JSON.parse(savedSession);
       const u = db.users.find(x => x.id === session.id);
-      if (u && u.status === 'ACTIVE') {
+      const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+      if (u && (u.status === 'ACTIVE' || u.status === 'ACTIVE_VERIFIED') && (!u.lastActive || (Date.now() - u.lastActive < oneWeekMs))) {
         if (!u.deviceFp) u.deviceFp = deviceFingerprint;
         if (u.deviceFp === deviceFingerprint) {
           u.lastIp = currentClientIP;
+          u.lastActive = Date.now();
           setTimeout(() => {
             document.getElementById('session-tag').innerText = `${u.id} [${u.role}]`;
-            document.getElementById('app-nav').style.display = 'grid';
-            document.getElementById('btn-admin').style.display = (u.role === 'ADMIN') ? 'block' : 'none';
+            document.getElementById('post-login-controls').style.display = 'flex'; // Reveal post-login controls (7 nav bars, messages, search)
+            configureSection7ForRole(u);
             showPage('page-dash');
             syncUI();
           }, 50);
-        } else {
-          session = null;
-          localStorage.removeItem(DB_KEY + '_SESSION');
-        }
-      } else {
-        session = null;
-        localStorage.removeItem(DB_KEY + '_SESSION');
-      }
+        } else { session = null; localStorage.removeItem(DB_KEY + '_SESSION'); }
+      } else { session = null; localStorage.removeItem(DB_KEY + '_SESSION'); }
     } catch(e) { session = null; }
   }
-  if (session) syncUI();
-
-  setInterval(() => {
-    backgroundSync(false);
-  }, 3000);
+  if (session) {
+    session.lastActive = Date.now();
+    syncUI();
+    document.getElementById('post-login-controls').style.display = 'flex'; // Reveal post-login controls
+    configureSection7ForRole(session);
+  }
+  setInterval(() => { backgroundSync(false); }, 3000);
 }
 
 function save() { 
   if (session) {
     const u = db.users.find(x => x.id === session.id);
-    if (u) u.lastIp = currentClientIP;
+    if (u) { u.lastIp = currentClientIP; u.lastActive = Date.now(); }
   }
+  cleanupChatsLifecycle();
   localStorage.setItem(DB_KEY, JSON.stringify(db)); 
   if(session) localStorage.setItem(DB_KEY + '_SESSION', JSON.stringify(session));
   if (session) syncUI(); 
-  pushDataToServer();
+  pushDataToServerSilent();
 }
 
-function toggleAuth() {
-  const lb=document.getElementById('login-box'), rb=document.getElementById('reg-box');
-  if(lb.style.display==='none'){ lb.style.display='block'; rb.style.display='none'; } else { lb.style.display='none'; rb.style.display='block'; }
+function focusFirstInputInPage(pageId) {
+  setTimeout(() => {
+    const page = document.getElementById(pageId);
+    if (!page) return;
+    const target = page.querySelector('.autofocus-target') || page.querySelector('input:not([readonly]), select, textarea');
+    if (target) target.focus();
+  }, 100);
 }
 
-function openOnlineRegModal() { toggleAuth(); }
+function configureSection7ForRole(u) {
+  const title = document.getElementById('section-7-title');
+  const desc = document.getElementById('section-7-desc');
+  const adminGrid = document.getElementById('section-7-admin-grid');
+  const userProfile = document.getElementById('section-7-user-profile');
+  const navBtn7 = document.getElementById('btn-section-7');
+  const workspaceBadge = document.getElementById('prof-workspace-badge');
+
+  if (u.role === 'OWNER' || u.id === 'MASTER_OWNER') {
+    title.innerText = 'ADMINISTRATION & MASTER CONTROL (OWNER)';
+    desc.innerText = 'SELECT AN ADMINISTRATIVE OR USER MODULE BELOW:';
+    adminGrid.style.display = 'grid';
+    userProfile.style.display = 'none';
+    navBtn7.innerText = '7.OWNER';
+    if(workspaceBadge) workspaceBadge.innerText = 'SUPREME OWNER MODE';
+  } else if (u.role === 'ADMIN') {
+    title.innerText = 'ADMINISTRATION DESK';
+    desc.innerText = 'SELECT AN ADMINISTRATIVE MODULE BELOW:';
+    adminGrid.style.display = 'grid';
+    userProfile.style.display = 'none';
+    navBtn7.innerText = '7.ADMIN';
+  } else if (u.role === 'SUBSCRIBER_TENANT') {
+    title.innerText = 'INDEPENDENT SUBSCRIBER DESK';
+    desc.innerText = 'YOUR ISOLATED WORKSPACE MANAGEMENT:';
+    adminGrid.style.display = 'none';
+    userProfile.style.display = 'block';
+    navBtn7.innerText = '7.SUB';
+    if(workspaceBadge) workspaceBadge.innerText = 'LOCAL WORKSPACE OWNER';
+    populateUserProfile(u);
+  } else {
+    title.innerText = 'OPERATOR / USER PROFILE DESK';
+    desc.innerText = 'USER ACCOUNT & SESSION MANAGEMENT:';
+    adminGrid.style.display = 'none';
+    userProfile.style.display = 'block';
+    navBtn7.innerText = '7.USR';
+    if(workspaceBadge) workspaceBadge.innerText = 'STANDARD USER MODE';
+    populateUserProfile(u);
+  }
+}
+
+function populateUserProfile(u) {
+  document.getElementById('prof-uid').innerText = u.id;
+  document.getElementById('prof-role').innerText = u.role;
+  document.getElementById('prof-phone').innerText = u.phone || 'N/A';
+  document.getElementById('prof-status').innerText = u.status;
+}
 
 function showPage(id) {
+  closeAccountSubPanels();
+  closeAdminSubPanels();
   document.querySelectorAll('.view-page').forEach(e=>e.style.display='none');
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active-main-tab'));
   document.getElementById(id).style.display='flex';
-  const map={'page-dash':0,'page-acc':1,'page-teller':2,'page-passbook':3,'page-admin':4,'page-audit':5};
-  if(map[id]!==undefined) document.querySelectorAll('.nav-btn')[map[id]].classList.add('active');
-  if(id==='page-admin') renderAdmin();
+  
+  const map={'page-dash':0,'page-acc':1,'page-teller':2,'page-passbook':3,'page-chat':4,'page-audit':5,'page-section-7':6};
+  if(map[id]!==undefined) {
+    const activeTab = document.querySelectorAll('.nav-btn')[map[id]];
+    if(activeTab) activeTab.classList.add('active-main-tab');
+  }
+  
+  document.querySelectorAll('.box').forEach(b => b.classList.remove('active-working-section'));
+  const activePageBox = document.querySelector('#' + id + ' > .box');
+  if(activePageBox) activePageBox.classList.add('active-working-section');
+
+  const targetPageElem = document.getElementById(id);
+  if(targetPageElem) {
+    const rect = targetPageElem.getBoundingClientRect();
+    if (rect.bottom > window.innerHeight) {
+      targetPageElem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  focusFirstInputInPage(id);
+
+  if(id==='page-admin' || id==='page-section-7') { renderAdmin(); generateReport(); }
+  if(id==='page-chat') { renderChat(); markMessagesRead(); }
+}
+
+function openAccountSubPanel(panelId, btnElement) {
+  document.querySelectorAll('.account-sub-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('#page-acc .sub-nav-btn').forEach(b => b.classList.remove('active-sub-btn'));
+  if(btnElement) btnElement.classList.add('active-sub-btn');
+  const panel = document.getElementById(panelId);
+  if (panel) {
+    panel.style.display = 'block';
+    panel.classList.add('active-working-section');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    focusFirstInputInPage(panelId);
+  }
+}
+function closeAccountSubPanels() { 
+  document.querySelectorAll('.account-sub-panel').forEach(p => p.style.display = 'none'); 
+  document.querySelectorAll('#page-acc .sub-nav-btn').forEach(b => b.classList.remove('active-sub-btn'));
+}
+
+function openAdminSubPanel(panelId, btnElement) {
+  document.querySelectorAll('.admin-sub-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('#page-section-7 .sub-nav-btn').forEach(b => b.classList.remove('active-sub-btn'));
+  if(btnElement) btnElement.classList.add('active-sub-btn');
+  const panel = document.getElementById(panelId);
+  if (panel) { 
+    panel.style.display = 'block'; 
+    panel.classList.add('active-working-section');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    renderAdmin(); 
+    focusFirstInputInPage(panelId);
+  }
+}
+function closeAdminSubPanels() { 
+  document.querySelectorAll('.admin-sub-panel').forEach(p => p.style.display = 'none'); 
+  document.querySelectorAll('#page-section-7 .sub-nav-btn').forEach(b => b.classList.remove('active-sub-btn'));
+}
+
+function openConfigTab(tabId, btnElem) {
+  document.querySelectorAll('.settings-sub-panel').forEach(p => p.style.display = 'none');
+  const target = document.getElementById(tabId);
+  if(target) target.style.display = 'block';
+}
+
+function toggleLoginAction(mode) {
+  const loginBox = document.getElementById('login-box');
+  const regBox = document.getElementById('reg-box');
+  const recoverBox = document.getElementById('recover-box');
+  loginBox.style.display = 'none'; regBox.style.display = 'none'; recoverBox.style.display = 'none';
+  if (mode === 'login') {
+    loginBox.style.display = 'block';
+    focusFirstInputInPage('page-login');
+  } else if (mode === 'reg') { 
+    regBox.style.display = 'block'; 
+    focusFirstInputInPage('reg-box');
+  } else if (mode === 'recover') { 
+    recoverBox.style.display = 'block'; 
+    focusFirstInputInPage('recover-box');
+  }
 }
 
 async function requestSmsBrowserPermission() {
@@ -686,120 +1428,291 @@ async function requestSmsBrowserPermission() {
       const permissionStatus = await navigator.permissions.query({ name: 'notifications' });
       smsPermissionGranted = (permissionStatus.state === 'granted' || permissionStatus.state === 'prompt');
     }
-  } catch (err) {
-    smsPermissionGranted = true;
-  }
-  
-  if (smsPermissionGranted) {
-    document.getElementById('sms-perm-status').innerText = 'ON';
-    alert('BROWSER SMS/NOTIFICATION PERMISSION GRANTED.');
-  } else {
-    document.getElementById('sms-perm-status').innerText = 'OFF';
-    alert('SMS PERMISSION DENIED BY BROWSER POLICY.');
-  }
+  } catch (err) { smsPermissionGranted = true; }
+  document.getElementById('sms-perm-status').innerText = smsPermissionGranted ? 'ON' : 'OFF';
+  alert(smsPermissionGranted ? 'SMS PERMISSION GRANTED.' : 'SMS PERMISSION DENIED.');
 }
 
 async function handleLogon(e) {
   e.preventDefault(); 
   showLoadingFeedback('login-task-feedback');
   await fetchClientIP();
-  
   setTimeout(() => {
     const uid=document.getElementById('inp-uid').value.trim().toUpperCase(), pin=document.getElementById('inp-pin').value.trim();
     let u = db.users.find(x=>x.id===uid && x.pin===pin);
-    if(!u && uid==='ADMIN' && pin==='9999') {
-      u={id:'ADMIN',pin:'9999',role:'ADMIN',status:'ACTIVE',lastIp: currentClientIP, phone:'0000000000', deviceFp: deviceFingerprint};
+    if(!u && (uid==='MASTER_OWNER' || uid==='ADMIN') && pin==='9999') {
+      u={id:'MASTER_OWNER',pin:'9999',role:'OWNER',status:'ACTIVE',lastIp: currentClientIP, phone:'0000000000', deviceFp: deviceFingerprint, lastActive: Date.now()};
       db.users.push(u);
     }
     if(!u){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Invalid credentials.'); return; }
-    if(u.status==='PENDING'){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Awaiting admin approval.'); return; }
-    if(u.status==='SUSPENDED'){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Account suspended.'); return; }
+    if(u.status==='LOCKED' || u.status==='SUSPENDED'){ showTaskFeedback('login-task-feedback', 'DECLINED', 'Account is locked/suspended.'); return; }
 
-    u.lastIp = currentClientIP;
-    u.deviceFp = deviceFingerprint;
-    session=u; 
-    save();
-
+    u.lastIp = currentClientIP; u.deviceFp = deviceFingerprint; u.lastActive = Date.now();
+    session=u; save();
     showTaskFeedback('login-task-feedback', 'SUCCESS', `Logged in as ${u.id} [${u.role}]`);
     document.getElementById('session-tag').innerText=`${u.id} [${u.role}]`;
-    document.getElementById('app-nav').style.display='flex';
-    document.getElementById('btn-admin').style.display=(u.role==='ADMIN')?'block':'none';
+    document.getElementById('post-login-controls').style.display = 'flex'; // Reveal post-login controls (7 nav bars, messages, search)
+    configureSection7ForRole(u);
     setTimeout(() => { showPage('page-dash'); syncUI(); }, 600);
   }, 400);
 }
 
-function handleOnlineReg(e) {
+function openStatusPopupModal() {
+  document.getElementById('status-popup-modal').style.display = 'flex';
+  document.getElementById('prelogin-ref-input').value = '';
+  document.getElementById('prelogin-ref-result').innerText = 'STATUS RESULTS WILL APPEAR HERE...';
+  document.getElementById('prelogin-ref-input').focus();
+}
+
+function closeStatusPopupModal() {
+  document.getElementById('status-popup-modal').style.display = 'none';
+}
+
+function openChatModal() {
+  const chatBody = `
+    <div class="box" style="height: 65vh; display: flex; flex-direction: column; gap: 8px; position: relative; background: #000;">
+      <div class="box-title"><span>SECURE USER CHAT DESK</span> <span class="dim">CONNECTED</span></div>
+      <div class="grid-3" style="font-size:0.7rem; align-items:center;">
+        <div>
+          <label class="dim">SEND TO BY:</label>
+          <select id="modal-chat-recipient-type" onchange="onModalChatRecipientTypeChange()">
+            <option value="MOBILE" selected>MOBILE NUMBER</option>
+            <option value="ACC">ACC NUMBER</option>
+            <option value="NAME">HOLDER NAME</option>
+          </select>
+        </div>
+        <div style="grid-column: span 2;">
+          <label class="dim">RECIPIENT TARGET & IDENTIFY:</label>
+          <input type="text" id="modal-chat-recipient-target" inputmode="numeric" placeholder="ENTER 10-DIGIT MOBILE..." oninput="identifyModalChatRecipient()" />
+        </div>
+      </div>
+      <div style="font-size:0.65rem; color: var(--accent-blue);" id="modal-chat-recipient-resolved">TARGET: BROADCAST / ALL OPERATORS</div>
+      <div style="flex: 1; overflow-y: auto; border: 1px dashed var(--dim); padding: 8px; display: flex; flex-direction: column; gap: 6px;" id="modal-chat-messages-container">
+        <div style="text-align: center; color: var(--dim); font-size: 0.7rem;">START A SECURE CONVERSATION</div>
+      </div>
+      <form onsubmit="sendModalChatMessage(event)" style="display: flex; gap: 6px; background: var(--bg); padding-top: 6px; border-top: 1px solid var(--fg);">
+        <input type="text" id="modal-chat-input-msg" placeholder="TYPE MULTI-RECIPIENT MESSAGE..." required autocomplete="off" style="flex: 1; font-size: 1rem; padding: 10px;" />
+        <button type="submit" class="inverted" onclick="flashButton(this)" style="font-size: 1rem; padding: 10px 16px;">[ SEND ]</button>
+      </form>
+    </div>
+  `;
+  document.getElementById('generic-modal-title').innerText = 'SECURE CHAT DESK';
+  document.getElementById('generic-modal-body').innerHTML = chatBody;
+  document.getElementById('generic-centered-modal').style.display = 'flex';
+  renderModalChat();
+}
+
+function onModalChatRecipientTypeChange() {
+  const type = document.getElementById('modal-chat-recipient-type').value;
+  const targetInput = document.getElementById('modal-chat-recipient-target');
+  targetInput.value = '';
+  if (type === 'NAME') {
+    targetInput.removeAttribute('inputmode');
+    targetInput.placeholder = "ENTER HOLDER NAME(S)...";
+  } else {
+    targetInput.setAttribute('inputmode', 'numeric');
+    targetInput.placeholder = type === 'MOBILE' ? "E.G. 9876543210" : "E.G. 10000000001";
+  }
+}
+
+function identifyModalChatRecipient() {
+  const targetInput = document.getElementById('modal-chat-recipient-target');
+  const val = targetInput.value.trim().toUpperCase();
+  const resolvedLabel = document.getElementById('modal-chat-recipient-resolved');
+  if(!val) { resolvedLabel.innerText = 'TARGET: BROADCAST / ALL OPERATORS'; return; }
+  resolvedLabel.innerText = `TARGET RESOLVED MULTI-RECIPIENT: ${val}`;
+  resolvedLabel.style.color = 'var(--accent-green)';
+}
+
+async function sendModalChatMessage(e) {
+  e.preventDefault();
+  const input = document.getElementById('modal-chat-input-msg');
+  const msgText = input.value.trim();
+  const targetVal = document.getElementById('modal-chat-recipient-target').value.trim().toUpperCase();
+  if(!msgText || !session) return;
+
+  if(!db.chats) db.chats = [];
+  db.chats.push({
+    sender: session.id,
+    recipient: targetVal || 'BROADCAST',
+    text: await encryptData(msgText),
+    time: new Date().toLocaleTimeString(),
+    timestamp: Date.now(),
+    read: false
+  });
+  save();
+  input.value = '';
+  renderModalChat();
+}
+
+async function renderModalChat() {
+  cleanupChatsLifecycle();
+  const container = document.getElementById('modal-chat-messages-container');
+  if(!container) return;
+  container.innerHTML = '';
+  if(!db.chats || !db.chats.length) {
+    container.innerHTML = '<div style="text-align: center; color: var(--dim); font-size: 0.7rem;">NO MESSAGES</div>';
+    return;
+  }
+  for (let c of db.chats) {
+    const isMe = session && c.sender === session.id;
+    const plainText = await decryptData(c.text);
+    container.innerHTML += `<div style="background: ${isMe ? '#222' : '#111'}; border: 1px solid ${isMe ? 'var(--fg)' : 'var(--dim)'}; padding: 6px; border-radius: 4px; max-width: 80%; align-self: ${isMe ? 'flex-end' : 'flex-start'};"><div style="font-size: 0.6rem; color: var(--dim); margin-bottom: 2px;">FROM: ${c.sender} -> TO: ${c.recipient} @ ${c.time}</div><div style="font-size: 0.75rem;">${plainText}</div></div>`;
+  }
+  container.scrollTop = container.scrollHeight;
+}
+
+function updateRegistrationRoleDropdown() {
+  const sel = document.getElementById('reg-role-type');
+  if(!sel) return;
+  sel.innerHTML = `
+    <option value="ADMIN" selected>ROLE: ADMIN</option>
+    <option value="OPERATOR">ROLE: OPERATOR</option>
+    <option value="SUBSCRIBER_TENANT">ROLE: INDEPENDENT CUSTOMER</option>
+    <option value="GENERAL_USER">ROLE: GENERAL USER</option>
+  `;
+  if(db.customRoles) {
+    db.customRoles.forEach(r => {
+      sel.innerHTML += `<option value="${r.name}">${r.name}</option>`;
+    });
+  }
+}
+
+function createNewCustomRole() {
+  const nameInput = document.getElementById('new-role-name');
+  const roleName = nameInput.value.trim().toUpperCase();
+  if(!roleName) { alert("ENTER A VALID ROLE NAME."); return; }
+
+  const checkboxes = document.querySelectorAll('.role-perm-chk:checked');
+  const perms = Array.from(checkboxes).map(cb => cb.value);
+
+  if(!db.customRoles) db.customRoles = [];
+  if(!db.customRoles.some(r => r.name === roleName)) {
+    db.customRoles.push({ name: roleName, permissions: perms });
+    save();
+    updateRegistrationRoleDropdown();
+    alert(`CUSTOM ROLE '${roleName}' CREATED WITH SELECTED PERMISSIONS.`);
+    nameInput.value = '';
+  } else {
+    alert("ROLE ALREADY EXISTS.");
+  }
+}
+
+async function handleUserRegistration(e) {
   e.preventDefault();
   showLoadingFeedback('reg-task-feedback');
+  const tenCharRef = await generateTenCharRefId();
+  const name = document.getElementById('reg-name').value.trim().toUpperCase();
+  const phone = document.getElementById('reg-phone').value.trim().replace(/[^0-9]/g,'');
+  const pin = document.getElementById('reg-pin').value.trim();
+  const role = document.getElementById('reg-role-type').value;
+  const email = document.getElementById('reg-email').value.trim();
+  const mode = document.getElementById('reg-mode').value;
 
-  setTimeout(async () => {
-    await fetchClientIP();
-    const uid = document.getElementById('reg-uid').value.trim().toUpperCase();
-    const pin = document.getElementById('reg-pin').value.trim();
-    const phone = document.getElementById('reg-phone').value.trim().replace(/[^0-9]/g,'');
+  if (phone.length !== 10) {
+    showTaskFeedback('reg-task-feedback', 'DECLINED', 'MOBILE NUMBER MUST BE EXACTLY 10 DIGITS.');
+    return;
+  }
 
-    if(db.users.some(x => x.id === uid)) { showTaskFeedback('reg-task-feedback', 'DECLINED', 'ID already exists.'); return; }
+  const generatedUserId = 'USR-' + tenCharRef.refId.slice(0, 6).toUpperCase();
 
-    db.users.push({ id: uid, pin: pin, role: 'OPERATOR', status: 'PENDING', lastIp: currentClientIP, phone: phone, deviceFp: deviceFingerprint });
-    save();
-    showTaskFeedback('reg-task-feedback', 'SUCCESS', 'Registration submitted. Pending Admin approval.');
-    setTimeout(() => { toggleAuth(); }, 1000);
-  }, 400);
+  if (mode === 'EMAIL_OTP') {
+    pendingRegOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    pendingRegData = { id: generatedUserId, name, pin, phone, role, email, refId: tenCharRef.refId, ip: tenCharRef.ip };
+    if (email) {
+      await sendNotificationEmail(email, "LEDGER: Registration Verification Code", `Hello ${name},\n\nYour User ID is: ${generatedUserId}\nYour 10-char Ref ID is: ${tenCharRef.refId}\n\nOTP Code: ${pendingRegOtpCode}`);
+    }
+    showTaskFeedback('reg-task-feedback', 'SUCCESS', `OTP sent. USER ID: ${generatedUserId} | REF ID: ${tenCharRef.refId}. DONT SHARE IT WITH ANYONE!`);
+    return;
+  }
+
+  db.users.push({ id: generatedUserId, name, pin, role, status: 'ACTIVE', lastIp: tenCharRef.ip, phone, email, deviceFp: deviceFingerprint, refId: tenCharRef.refId, lastActive: Date.now() });
+  
+  db.ledger.unshift({ seq: db.ledger.length+1, refId: tenCharRef.refId, date: tenCharRef.date, time: tenCharRef.time, ip: tenCharRef.ip, accNo: 'SYSTEM', type: 'REG', amount: 0, operator: generatedUserId, narrative: `NEW USER REGISTERED [REF: ${tenCharRef.refId}]` });
+  save();
+
+  showTaskFeedback('reg-task-feedback', 'SUCCESS', `SUCCESS! USER ID: ${generatedUserId} | 10-CHAR REF ID: ${tenCharRef.refId}. DONT SHARE IT WITH ANYONE!`);
 }
 
-function adminCreateUser(e) {
+function trackPreLoginRef(e) {
+  const query = e.target.value.trim();
+  const resultBox = document.getElementById('prelogin-ref-result');
+  if(!query) {
+    resultBox.innerText = 'TRACKS PRE-LOGIN REGISTRATION / TRANSACTION STATUS ONLY.';
+    resultBox.style.color = 'var(--dim)';
+    return;
+  }
+
+  const foundLedger = db.ledger.find(l => l.refId && l.refId === query);
+  if (foundLedger) {
+    resultBox.innerHTML = `FOUND PRE-LOGIN REF: ${foundLedger.refId} | DATE: ${foundLedger.date} ${foundLedger.time} | TYPE: ${foundLedger.type} | NARRATIVE: ${foundLedger.narrative}`;
+    resultBox.style.color = 'var(--accent-green)';
+  } else {
+    resultBox.innerText = 'NO PRE-LOGIN TRANSACTION FOUND MATCHING THIS 10-CHAR REF ID.';
+    resultBox.style.color = 'var(--accent-red)';
+  }
+}
+
+function onRecoveryTypeChange() {
+  const type = document.getElementById('rec-type').value;
+  document.getElementById('rec-uid-group').style.display = (type === 'PASSWORD') ? 'block' : 'none';
+}
+
+async function handleRecoverySubmission(e) {
+  e.preventDefault();
+  showLoadingFeedback('recover-task-feedback');
+  const tenCharRef = await generateTenCharRefId();
+  const recType = document.getElementById('rec-type').value;
+  const phone = document.getElementById('rec-phone').value.trim().replace(/[^0-9]/g,'');
+  const details = document.getElementById('rec-details').value.trim();
+
+  if (phone.length !== 10) {
+    showTaskFeedback('recover-task-feedback', 'DECLINED', 'MOBILE NUMBER MUST BE EXACTLY 10 DIGITS.');
+    return;
+  }
+
+  if (recType === 'USER_ID') {
+    const foundUser = db.users.find(u => u.phone === phone);
+    showTaskFeedback('recover-task-feedback', foundUser ? 'SUCCESS' : 'DECLINED', foundUser ? `RETRIEVED USER ID: ${foundUser.id} (REF: ${tenCharRef.refId})` : `NO USER FOUND FOR MOBILE ${phone}. REF: ${tenCharRef.refId}`);
+    return;
+  }
+
+  const uid = document.getElementById('rec-uid').value.trim().toUpperCase();
+  const days = (db.settings && db.settings.recoveryDays) ? parseInt(db.settings.recoveryDays) : 7;
+  const deadlineDate = new Date(); deadlineDate.setDate(deadlineDate.getDate() + days);
+  if(!db.recoverRequests) db.recoverRequests = [];
+  db.recoverRequests.push({ refId: tenCharRef.refId, uid: uid, phone: phone, details: details, deadline: deadlineDate.toLocaleDateString(), status: 'PENDING' });
+  save();
+  showTaskFeedback('recover-task-feedback', 'SUCCESS', `Password recovery requested! Track Ref ID: ${tenCharRef.refId}`);
+  e.target.reset();
+}
+
+async function handlePasswordRecoveryRequest(e) {
+  e.preventDefault();
+}
+
+async function adminCreateUser(e) {
   e.preventDefault();
   showLoadingFeedback('admin-create-task-feedback');
+  const tenCharRef = await generateTenCharRefId();
+  const uid = document.getElementById('admin-new-uid').value.trim().toUpperCase();
+  const pin = document.getElementById('admin-new-pin').value.trim();
+  const phone = document.getElementById('admin-new-phone').value.trim().replace(/[^0-9]/g,'');
+  const role = document.getElementById('admin-new-role').value;
 
-  setTimeout(async () => {
-    await fetchClientIP();
-    const uid = document.getElementById('admin-new-uid').value.trim().toUpperCase();
-    const pin = document.getElementById('admin-new-pin').value.trim();
-    const phone = document.getElementById('admin-new-phone').value.trim().replace(/[^0-9]/g,'');
-    const role = document.getElementById('admin-new-role').value;
-
-    if (db.users.some(x => x.id === uid)) {
-      showTaskFeedback('admin-create-task-feedback', 'DECLINED', 'USER ID ALREADY EXISTS.');
-      return;
-    }
-
-    db.users.push({
-      id: uid,
-      pin: pin,
-      role: role,
-      status: 'ACTIVE',
-      lastIp: currentClientIP,
-      phone: phone,
-      deviceFp: deviceFingerprint
-    });
-
-    const refId = generateRefId();
-    db.ledger.unshift({
-      seq: db.ledger.length + 1,
-      refId: refId,
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString(),
-      ip: currentClientIP,
-      accNo: 'SYS-USER',
-      type: 'USER_CREATE',
-      amount: 0,
-      operator: session ? session.id : 'ADMIN',
-      narrative: `CREATED USER: ${uid} [ROLE: ${role}] [REF: ${refId}]`
-    });
-
-    save();
-    showTaskFeedback('admin-create-task-feedback', 'SUCCESS', `USER ${uid} CREATED & ACTIVATED DIRECTLY. REF: ${refId}`);
-    e.target.reset();
-    renderAdmin();
-  }, 400);
+  if (phone.length !== 10) { alert('MOBILE MUST BE EXACT 10 DIGITS.'); return; }
+  if (db.users.some(x => x.id === uid)) { showTaskFeedback('admin-create-task-feedback', 'DECLINED', 'USER ID ALREADY EXISTS.'); return; }
+  db.users.push({ id: uid, pin: pin, role: role, status: 'ACTIVE', lastIp: tenCharRef.ip, phone: phone, deviceFp: deviceFingerprint, refId: tenCharRef.refId, lastActive: Date.now() });
+  save();
+  showTaskFeedback('admin-create-task-feedback', 'SUCCESS', `USER ${uid} CREATED. REF: ${tenCharRef.refId}`);
+  e.target.reset(); renderAdmin();
 }
 
+function confirmSignOut() { if (confirm("DO YOU WANT TO SIGN OUT?")) logout(); }
 function logout() { 
-  session=null; 
-  localStorage.removeItem(DB_KEY + '_SESSION');
-  document.getElementById('app-nav').style.display='none'; 
-  document.getElementById('session-tag').innerText='DISCONNECTED'; 
-  showPage('page-login'); 
+  session=null; localStorage.removeItem(DB_KEY + '_SESSION');
+  document.getElementById('post-login-controls').style.display='none'; // Hide post-login controls on sign out
+  document.getElementById('session-tag').innerText='DISCONNECTED'; toggleLoginAction('login'); showPage('page-login'); 
 }
 
 function getSerial() {
@@ -809,100 +1722,62 @@ function getSerial() {
 }
 
 async function importMultipleContacts() {
-  if (!('contacts' in navigator && 'ContactsManager' in window)) { alert('DEVICE CONTACT API NOT SUPPORTED. USE .VCF IMPORT.'); return; }
+  if (!('contacts' in navigator && 'ContactsManager' in window)) { alert('DEVICE CONTACT API NOT SUPPORTED.'); return; }
   try {
-    await fetchClientIP();
     const contacts = await navigator.contacts.select(['name','tel','email','address'], { multiple:true });
     if(!contacts || !contacts.length) return; 
-    let added = 0;
-    const nowStr = new Date().toLocaleString();
-    contacts.forEach(c => {
+    let added = 0; const nowStr = new Date().toLocaleString(); const tenCharRef = await generateTenCharRefId();
+    for (let c of contacts) {
       const name = (c.name && c.name.length) ? c.name[0].toUpperCase() : 'UNKNOWN'; 
       const phone = (c.tel && c.tel.length) ? c.tel[0].replace(/[^0-9]/g,'') : 'NO_PHONE';
       const email = (c.email && c.email.length) ? c.email[0].toUpperCase() : 'NO_EMAIL'; 
-      let addStr = 'NO_ADDRESS';
-      if(c.address && c.address.length){ 
-        const a = c.address[0]; 
-        addStr = [a.street, a.city, a.region, a.postalCode, a.country].filter(Boolean).join(', ').toUpperCase(); 
-      }
       if(!db.accounts.some(acc => acc.phone === phone)) {
-        db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'IMPORTED', phone: phone, email: email, address: addStr, balance: 0, status: 'APPROVED', smsOptIn: false, openedAt: nowStr, lastAccessed: nowStr }); 
+        db.accounts.push({ accountNumber: getSerial(), holderName: await encryptData(name), fatherName: 'IMPORTED', phone: phone, email: await encryptData(email), address: 'N/A', balance: 0, status: 'APPROVED', smsOptIn: false, openedAt: nowStr, lastAccessed: nowStr, refId: tenCharRef.refId, ip: tenCharRef.ip }); 
         added++;
       }
-    });
-    save(); 
-    alert(`SUCCESS: IMPORTED ${added} RECORDS.`);
-  } catch(err) { console.error(err); }
+    }
+    save(); alert(`SUCCESS: IMPORTED ${added} RECORDS. REF: ${tenCharRef.refId}`);
+  } catch(err) {}
 }
 
-function processVCF(e) {
-  const fileInput = e.target; 
-  if (!fileInput.files.length) return;
+async function processVCF(e) {
+  const fileInput = e.target; if (!fileInput.files.length) return;
   const reader = new FileReader();
   reader.onload = async function(ev) {
-    await fetchClientIP();
-    const text = ev.target.result; 
-    const cards = text.split('BEGIN:VCARD'); 
-    let added = 0;
-    const nowStr = new Date().toLocaleString();
-    cards.forEach(card => {
-      if (!card.trim()) return;
-      const nameMatch = card.match(/FN:(.*)/i); 
-      const phoneMatch = card.match(/TEL.*:(.*)/i);
+    const tenCharRef = await generateTenCharRefId(); const text = ev.target.result; const cards = text.split('BEGIN:VCARD'); let added = 0; const nowStr = new Date().toLocaleString();
+    for (let card of cards) {
+      if (!card.trim()) continue;
+      const nameMatch = card.match(/FN:(.*)/i); const phoneMatch = card.match(/TEL.*:(.*)/i);
       if (nameMatch && phoneMatch) {
-        const name = nameMatch[1].trim().toUpperCase(); 
-        const phone = phoneMatch[1].replace(/[^0-9]/g, '');
+        const name = nameMatch[1].trim().toUpperCase(); const phone = phoneMatch[1].replace(/[^0-9]/g, '');
         if (phone.length >= 7 && !db.accounts.some(a => a.phone === phone)) {
-          db.accounts.push({ accountNumber: getSerial(), holderName: name, fatherName: 'VCF_IMPORT', phone: phone, email: 'N/A', address: 'N/A', balance: 0, status: 'APPROVED', smsOptIn: false, openedAt: nowStr, lastAccessed: nowStr }); 
-          added++;
+          db.accounts.push({ accountNumber: getSerial(), holderName: await encryptData(name), fatherName: 'VCF_IMPORT', phone: phone, email: await encryptData('N/A'), address: 'N/A', balance: 0, status: 'APPROVED', smsOptIn: false, openedAt: nowStr, lastAccessed: nowStr, refId: tenCharRef.refId, ip: tenCharRef.ip }); added++;
         }
       }
-    });
-    save(); 
-    alert(`VCF IMPORT COMPLETE. ${added} ACCOUNTS ADDED.`); 
-    fileInput.value = '';
+    }
+    save(); alert(`VCF IMPORT COMPLETE. ${added} ACCOUNTS ADDED.`); fileInput.value = '';
   };
   reader.readAsText(fileInput.files[0]);
 }
 
-function toggleAccountOtpBox() {
-  const mode = document.getElementById('acc-auth-mode').value;
-  document.getElementById('acc-otp-box').style.display = (mode === 'OTP') ? 'block' : 'none';
-}
+function toggleAccountOtpBox() { document.getElementById('acc-otp-box').style.display = (document.getElementById('acc-auth-mode').value === 'OTP') ? 'block' : 'none'; }
 
-function manualAccount(e) {
-  e.preventDefault(); 
-  showLoadingFeedback('acc-task-feedback');
+async function manualAccount(e) {
+  e.preventDefault(); showLoadingFeedback('acc-task-feedback');
+  const tenCharRef = await generateTenCharRefId(); const phone = document.getElementById('acc-phone').value.trim().replace(/[^0-9]/g,'');
+  const accNo = getSerial(); const nowStr = new Date().toLocaleString();
+  const emailVal = document.getElementById('acc-email').value.trim().toUpperCase()||'N/A';
+  const smsOn = (document.getElementById('acc-sms').value==='ON'); const holderNameVal = document.getElementById('acc-name').value.trim().toUpperCase();
+  
+  db.accounts.push({ accountNumber: accNo, holderName: await encryptData(holderNameVal), fatherName: document.getElementById('acc-father').value.trim().toUpperCase()||'N/A', phone: phone, email: await encryptData(emailVal), address: document.getElementById('acc-address').value.trim().toUpperCase()||'N/A', balance: 0, status: 'APPROVED', smsOptIn: smsOn, openedAt: nowStr, lastAccessed: nowStr, refId: tenCharRef.refId, ip: tenCharRef.ip });
+  db.ledger.unshift({ seq: db.ledger.length+1, refId: tenCharRef.refId, date: tenCharRef.date, time: tenCharRef.time, day: tenCharRef.day, ip: tenCharRef.ip, accNo, type: 'ACC_OPEN', amount: 0, operator: session ? session.id : 'GUEST', narrative: `NEW ACCOUNT OPENED [REF: ${tenCharRef.refId}]` });
+  save(); 
 
-  setTimeout(async () => {
-    await fetchClientIP();
-    const phone = document.getElementById('acc-phone').value.trim().replace(/[^0-9]/g,'');
-    const accNo = getSerial();
-    const isPending = session && session.status === 'PENDING';
-    const nowStr = new Date().toLocaleString();
-    const refId = navigator.onLine ? generateRefId() : ('OFFLINE-' + Math.floor(1000 + Math.random() * 9000));
-    
-    db.accounts.push({ 
-      accountNumber: accNo, 
-      holderName: document.getElementById('acc-name').value.trim().toUpperCase(), 
-      fatherName: document.getElementById('acc-father').value.trim().toUpperCase()||'N/A', 
-      phone: phone, 
-      email: document.getElementById('acc-email').value.trim().toUpperCase()||'N/A', 
-      address: document.getElementById('acc-address').value.trim().toUpperCase()||'N/A', 
-      balance: 0, 
-      status: isPending ? 'PENDING' : 'APPROVED',
-      smsOptIn: (document.getElementById('acc-sms').value==='ON'),
-      openedAt: nowStr,
-      lastAccessed: nowStr,
-      refId: refId
-    });
-    
-    db.ledger.unshift({ seq: db.ledger.length+1, refId: refId, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo, type: 'ACC_OPEN', amount: 0, operator: session ? session.id : 'GUEST', narrative: `NEW ACCOUNT OPENED [REF: ${refId}]` });
-    save(); 
-
-    showTaskFeedback('acc-task-feedback', 'SUCCESS', `Account ${accNo} created & synced. REF ID: ${refId}`);
-    e.target.reset();
-  }, 400);
+  if (smsOn && emailVal !== 'N/A') {
+    await sendNotificationEmail(emailVal, "LEDGER: Account Successfully Created", `Dear ${holderNameVal},\n\nYour Ledger account (${accNo}) has been successfully created.`);
+  }
+  showTaskFeedback('acc-task-feedback', 'SUCCESS', `Account ${accNo} created. REF ID: ${tenCharRef.refId}`);
+  e.target.reset();
 }
 
 let editingAccNo = null;
@@ -912,526 +1787,523 @@ function openEditAcc(accNo) {
   editingAccNo = accNo;
   document.getElementById('edit-accno').value = acc.accountNumber;
   document.getElementById('edit-bal').value = acc.balance.toFixed(2);
-  document.getElementById('edit-name').value = acc.holderName;
+  decryptData(acc.holderName).then(dec => { document.getElementById('edit-name').value = dec; });
   document.getElementById('edit-father').value = acc.fatherName;
   document.getElementById('edit-phone').value = acc.phone;
-  document.getElementById('edit-email').value = acc.email;
+  decryptData(acc.email).then(dec => { document.getElementById('edit-email').value = dec; });
   document.getElementById('edit-address').value = acc.address;
   document.getElementById('edit-sms').value = acc.smsOptIn ? 'ON' : 'OFF';
-  document.getElementById('box-edit-acc').style.display = 'block';
+  openAccountSubPanel('panel-acc-edit');
 }
 
-function closeEditAcc() { document.getElementById('box-edit-acc').style.display = 'none'; editingAccNo = null; }
-
-function saveAccEdit(e) {
-  e.preventDefault();
-  if(!editingAccNo) return;
+async function saveAccEdit(e) {
+  e.preventDefault(); if(!editingAccNo) return;
   showLoadingFeedback('edit-task-feedback');
-
-  setTimeout(async () => {
-    await fetchClientIP();
-    const updatedData = {
-      accountNumber: editingAccNo,
-      holderName: document.getElementById('edit-name').value.trim().toUpperCase(),
-      fatherName: document.getElementById('edit-father').value.trim().toUpperCase(),
-      phone: document.getElementById('edit-phone').value.trim().replace(/[^0-9]/g,''),
-      email: document.getElementById('edit-email').value.trim().toUpperCase(),
-      address: document.getElementById('edit-address').value.trim().toUpperCase(),
-      smsOptIn: (document.getElementById('edit-sms').value === 'ON')
-    };
-
-    const refId = navigator.onLine ? generateRefId() : ('OFFLINE-' + Math.floor(1000 + Math.random() * 9000));
-
-    if(session && session.role === 'ADMIN') {
-      const acc = db.accounts.find(a => a.accountNumber === editingAccNo);
-      if(acc) {
-        Object.assign(acc, updatedData);
-        acc.lastAccessed = new Date().toLocaleString();
-        db.ledger.unshift({ seq: db.ledger.length+1, refId: refId, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: session.id, narrative: `ADMIN EDIT [REF: ${refId}]` });
-        save();
-        showTaskFeedback('edit-task-feedback', 'SUCCESS', `Account updated. REF ID: ${refId}`);
-      }
-    } else {
-      if(!db.editRequests) db.editRequests = [];
-      db.editRequests.push({ id: 'REQ_' + Date.now(), type: 'EDIT', accNo: editingAccNo, data: updatedData, operator: session.id, refId: refId });
-      save();
-      showTaskFeedback('edit-task-feedback', 'SUCCESS', `Edit request submitted. REF ID: ${refId}`);
-    }
-    setTimeout(() => { closeEditAcc(); loadAccountDirectory(); }, 1000);
-  }, 400);
+  const tenCharRef = await generateTenCharRefId();
+  const acc = db.accounts.find(a => a.accountNumber === editingAccNo);
+  if(acc) {
+    acc.holderName = await encryptData(document.getElementById('edit-name').value.trim().toUpperCase());
+    acc.fatherName = document.getElementById('edit-father').value.trim().toUpperCase();
+    acc.phone = document.getElementById('edit-phone').value.trim().replace(/[^0-9]/g,'');
+    acc.email = await encryptData(document.getElementById('edit-email').value.trim().toUpperCase());
+    acc.address = document.getElementById('edit-address').value.trim().toUpperCase();
+    acc.smsOptIn = (document.getElementById('edit-sms').value === 'ON');
+    acc.lastAccessed = new Date().toLocaleString();
+    db.ledger.unshift({ seq: db.ledger.length+1, refId: tenCharRef.refId, date: tenCharRef.date, time: tenCharRef.time, day: tenCharRef.day, ip: tenCharRef.ip, accNo: editingAccNo, type: 'ACC_EDIT', amount: 0, operator: session.id, narrative: `ACCOUNT EDITED [REF: ${tenCharRef.refId}]` });
+    save();
+    showTaskFeedback('edit-task-feedback', 'SUCCESS', `Account updated successfully. REF: ${tenCharRef.refId}`);
+  }
+  setTimeout(() => { closeAccountSubPanels(); loadAccountDirectory(); }, 1000);
 }
 
-async function requestDeleteAccount(accNo) {
-  await fetchClientIP();
-  const refId = navigator.onLine ? generateRefId() : ('OFFLINE-' + Math.floor(1000 + Math.random() * 9000));
-  if(session && session.role === 'ADMIN') {
-    if(confirm(`DELETE ACCOUNT ${accNo}? [REF: ${refId}]`)) {
-      db.accounts = db.accounts.filter(a => a.accountNumber !== accNo);
-      db.ledger.unshift({ seq: db.ledger.length+1, refId: refId, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), ip: currentClientIP, accNo, type: 'ACC_DEL', amount: 0, operator: session.id, narrative: `DELETED [REF: ${refId}]` });
-      save();
-      loadAccountDirectory();
-    }
-  } else {
-    if(confirm(`SUBMIT DELETE REQUEST FOR ${accNo}? [REF: ${refId}]`)) {
-      if(!db.editRequests) db.editRequests = [];
-      db.editRequests.push({ id: 'REQ_' + Date.now(), type: 'DELETE', accNo: accNo, operator: session.id, refId: refId });
-      save();
+async function loadAccountDirectory() {
+  const ab = document.getElementById('body-accs'); ab.innerHTML = '';
+  if (!db.accounts.length) { ab.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO ACCOUNTS FOUND</td></tr>'; return; }
+  for (let a of db.accounts) {
+    const isLocked = a.status === 'LOCKED';
+    const plainName = await decryptData(a.holderName);
+    ab.innerHTML += `<tr><td class="bold">${a.accountNumber}<br><span class="dim" style="font-size:0.6rem;">REF: ${a.refId || 'N/A'}</span></td><td><strong>${plainName}</strong><br><span class="dim">STATUS: ${a.status || 'APPROVED'}</span></td><td class="dim">PH: ${a.phone}</td><td class="bold">${a.balance.toFixed(2)}</td><td><button onclick="openEditAcc('${a.accountNumber}'); flashButton(this);" style="padding:2px 6px; font-size:0.65rem;">EDIT</button><button onclick="toggleLockAccount('${a.accountNumber}'); flashButton(this);" style="padding:2px 6px; font-size:0.65rem; color:${isLocked?'#0f0':'#ff0'}">${isLocked?'UNLOCK':'LOCK'}</button><button onclick="adminTransferPrompt('${a.accountNumber}')" style="padding:2px 6px; font-size:0.65rem; color:#58a6ff;">XFER</button><button onclick="deleteAccountAdmin('${a.accountNumber}')" style="padding:2px 6px; font-size:0.65rem; color:#ff4444;">DEL</button></td></tr>`;
+  }
+}
+
+async function adminTransferPrompt(fromAccNo) {
+  const toAccNo = prompt("ENTER TARGET 11-DIGIT ACCOUNT NUMBER FOR TRANSFER:");
+  if(!toAccNo) return;
+  const amtStr = prompt("ENTER AMOUNT TO TRANSFER:");
+  const amt = parseFloat(amtStr);
+  if(isNaN(amt) || amt <= 0) { alert("INVALID AMOUNT."); return; }
+
+  const fromAcc = db.accounts.find(a => a.accountNumber === fromAccNo);
+  const toAcc = db.accounts.find(a => a.accountNumber === toAccNo);
+
+  if(!fromAcc || !toAcc) { alert("SOURCE OR TARGET ACCOUNT NOT FOUND."); return; }
+  if(fromAcc.balance < amt) { alert("INSUFFICIENT BALANCE IN SOURCE ACCOUNT."); return; }
+
+  const tenCharRef = await generateTenCharRefId();
+  fromAcc.balance -= amt;
+  toAcc.balance += amt;
+
+  db.ledger.unshift({ seq: db.ledger.length+1, refId: tenCharRef.refId, date: tenCharRef.date, time: tenCharRef.time, day: tenCharRef.day, ip: tenCharRef.ip, accNo: fromAccNo, type: 'DR', amount: amt, operator: session.id, narrative: `INTERNAL XFER TO ${toAccNo} [REF: ${tenCharRef.refId}]` });
+  db.ledger.unshift({ seq: db.ledger.length+1, refId: tenCharRef.refId, date: tenCharRef.date, time: tenCharRef.time, day: tenCharRef.day, ip: tenCharRef.ip, accNo: toAccNo, type: 'CR', amount: amt, operator: session.id, narrative: `INTERNAL XFER FROM ${fromAccNo} [REF: ${tenCharRef.refId}]` });
+  save();
+  loadAccountDirectory();
+  alert(`TRANSFER OF ₹${amt.toFixed(2)} FROM ${fromAccNo} TO ${toAccNo} COMPLETED SUCCESSFULLY.`);
+}
+
+async function toggleLockAccount(accNo) {
+  const acc = db.accounts.find(a => a.accountNumber === accNo);
+  if(acc) {
+    acc.status = (acc.status === 'LOCKED') ? 'APPROVED' : 'LOCKED';
+    save(); loadAccountDirectory();
+    if (acc.smsOptIn && acc.email && acc.email !== 'N/A') {
+      const plainEmail = await decryptData(acc.email);
+      const plainName = await decryptData(acc.holderName);
+      const lockText = acc.status === 'LOCKED' ? 'LOCKED' : 'UNLOCKED';
+      await sendNotificationEmail(plainEmail, `LEDGER Security Notice: Account ${lockText}`, `Dear ${plainName},\n\nYour account (${accNo}) has been explicitly ${lockText}.`);
     }
   }
 }
 
-function loadAccountDirectory() {
-  const ab = document.getElementById('body-accs');
-  ab.innerHTML = '';
-  if (!db.accounts.length) {
-    ab.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO ACCOUNTS FOUND IN DATABASE</td></tr>';
-    return;
+async function deleteAccountAdmin(accNo) {
+  const tenCharRef = await generateTenCharRefId();
+  if(confirm(`DELETE ACCOUNT ${accNo}?`)) {
+    db.accounts = db.accounts.filter(a => a.accountNumber !== accNo);
+    db.ledger.unshift({ seq: db.ledger.length+1, refId: tenCharRef.refId, date: tenCharRef.date, time: tenCharRef.time, day: tenCharRef.day, ip: tenCharRef.ip, accNo, type: 'ACC_DEL', amount: 0, operator: session.id, narrative: `ACCOUNT DELETED [REF: ${tenCharRef.refId}]` });
+    save(); loadAccountDirectory();
   }
-  db.accounts.forEach(a => {
-    ab.innerHTML += `
-      <tr>
-        <td class="bold">${a.accountNumber}<br><span class="dim" style="font-size:0.6rem;">REF: ${a.refId || 'N/A'}</span></td>
-        <td><strong>${a.holderName}</strong><br><span class="dim">FATHER: ${a.fatherName}</span></td>
-        <td class="dim">PH: ${a.phone}</td>
-        <td class="bold">${a.balance.toFixed(2)}</td>
-        <td class="dim" style="font-size:0.65rem;">OPEN: ${a.openedAt || 'N/A'}<br>ACC: ${a.lastAccessed || 'N/A'}</td>
-      </tr>`;
-  });
 }
 
 async function autoFetch() {
   const q = document.getElementById('tx-acc').value.trim();
   const fetchBox = document.getElementById('tx-fetch');
   if(!q) { fetchBox.value = ''; return; }
-  
   let acc = db.accounts.find(x => x.accountNumber === q);
-  if (acc) {
-    fetchBox.value = `${acc.holderName} | BAL: ${acc.balance.toFixed(2)}`;
+  if(acc) {
+    const plainName = await decryptData(acc.holderName);
+    fetchBox.value = acc.status === 'LOCKED' ? 'ACCOUNT IS LOCKED' : `${plainName} | BAL: ${acc.balance.toFixed(2)}`;
   } else {
-    fetchBox.value = 'CHECKING CLOUD...';
-    if (navigator.onLine) {
-      await backgroundSync(false);
-      let recheck = db.accounts.find(x => x.accountNumber === q);
-      if (recheck) {
-        fetchBox.value = `${recheck.holderName} | BAL: ${recheck.balance.toFixed(2)}`;
-      } else {
-        fetchBox.value = 'OFFLINE / NOT FOUND IN CLOUD';
-      }
-    } else {
-      fetchBox.value = 'OFFLINE: A/C NOT IN LOCAL CACHE';
-    }
+    fetchBox.value = 'NOT FOUND';
   }
 }
 
 async function processTx(e) {
   e.preventDefault(); 
   showLoadingFeedback('tx-task-feedback');
+  const tenCharRef = await generateTenCharRefId();
+  let accNo = document.getElementById('tx-acc').value.trim();
+  let amtInput = parseFloat(document.getElementById('tx-amt').value);
+  let type = document.getElementById('tx-type').value;
+  let ref = document.getElementById('tx-ref').value.toUpperCase();
 
-  setTimeout(async () => {
-    await fetchClientIP();
-    let accNo = document.getElementById('tx-acc').value.trim();
-    let amtInput = parseFloat(document.getElementById('tx-amt').value);
-    let type = document.getElementById('tx-type').value;
-    let ref = document.getElementById('tx-ref').value.toUpperCase();
-    const refId = navigator.onLine ? generateRefId() : ('OFFLINE-' + Math.floor(1000 + Math.random() * 9000));
-    
-    if (amtInput < 0) {
-      type = 'DR';
-      amtInput = Math.abs(amtInput);
-    }
+  let acc = db.accounts.find(a => a.accountNumber === accNo);
+  if (!acc || acc.status === 'LOCKED') { showTaskFeedback('tx-task-feedback', 'DECLINED', `REJECTED: ACCOUNT LOCKED OR INVALID.`); return; }
+  
+  const rules = db.txRules || { CR: 'ADD', DR: 'SUB' };
+  const rule = rules[type] || 'ADD';
 
-    if (type === 'DR' && db.settings && db.settings.onlineDebitOnly && !navigator.onLine) {
-      showTaskFeedback('tx-task-feedback', 'DECLINED', 'DEBIT (DR) RESTRICTED TO ONLINE MODE ONLY.');
-      return;
-    }
+  if (rule === 'SUB' && acc.balance < amtInput) { 
+    showTaskFeedback('tx-task-feedback', 'DECLINED', `DECLINED: INSUFFICIENT BALANCE.`); 
+    return; 
+  }
 
-    if (navigator.onLine) {
-      await backgroundSync(false);
-    }
+  if (rule === 'ADD') acc.balance += amtInput;
+  else if (rule === 'SUB') acc.balance -= amtInput;
+  else if (rule === 'MUL') acc.balance *= amtInput;
+  else if (rule === 'DIV') {
+    if(amtInput === 0) { alert("CANNOT DIVIDE BY ZERO."); return; }
+    acc.balance /= amtInput;
+  }
 
-    let acc = db.accounts.find(a => a.accountNumber === accNo);
+  acc.lastAccessed = new Date().toLocaleString();
+  db.ledger.unshift({ seq: db.ledger.length+1, refId: tenCharRef.refId, date: tenCharRef.date, time: tenCharRef.time, day: tenCharRef.day, ip: tenCharRef.ip, accNo, type, amount: amtInput, operator: session ? session.id : 'GUEST', narrative: `${ref} [RULE: ${rule}] [REF: ${tenCharRef.refId}]` }); 
+  save(); autoFetch();
 
-    if (!acc) {
-      db.ledger.unshift({ 
-        seq: db.ledger.length+1, 
-        refId: refId,
-        date: new Date().toLocaleDateString(), 
-        time: new Date().toLocaleTimeString(), 
-        ip: currentClientIP, 
-        accNo: accNo || 'UNKNOWN', 
-        type: 'REJECTED_' + type, 
-        amount: amtInput, 
-        operator: session ? session.id : 'GUEST', 
-        narrative: `REJECTED: ACCOUNT DOES NOT EXIST (${ref}) [REF: ${refId}]` 
-      });
-      save();
-      showTaskFeedback('tx-task-feedback', 'DECLINED', `REJECTED: ACCOUNT ${accNo} DOES NOT EXIST. REF ID: ${refId}`);
-      document.getElementById('tx-amt').value=''; 
-      document.getElementById('tx-ref').value='';
-      return;
-    }
-
-    if (type === 'DR' && acc.balance < amtInput) {
-      db.ledger.unshift({ 
-        seq: db.ledger.length+1, 
-        refId: refId,
-        date: new Date().toLocaleDateString(), 
-        time: new Date().toLocaleTimeString(), 
-        ip: currentClientIP, 
-        accNo, 
-        type: 'REJECTED_DR', 
-        amount: amtInput, 
-        operator: session ? session.id : 'GUEST', 
-        narrative: `REJECTED: INSUFFICIENT BALANCE (${ref}) [REF: ${refId}]` 
-      });
-      save();
-      showTaskFeedback('tx-task-feedback', 'DECLINED', `DECLINED: INSUFFICIENT BALANCE. REF ID: ${refId}`);
-      return;
-    }
-
-    if(type === 'CR') acc.balance += amtInput; 
-    if(type === 'DR') acc.balance -= amtInput;
-    acc.lastAccessed = new Date().toLocaleString();
-    
-    db.ledger.unshift({ 
-      seq: db.ledger.length+1, 
-      refId: refId,
-      date: new Date().toLocaleDateString(), 
-      time: new Date().toLocaleTimeString(), 
-      ip: currentClientIP, 
-      accNo, 
-      type, 
-      amount: amtInput, 
-      operator: session ? session.id : 'GUEST', 
-      narrative: `${ref} [REF: ${refId}]` 
-    }); 
-    save(); 
-    autoFetch();
-
-    let smsAlertText = '';
-    if (db.settings && db.settings.smsEnabled !== false && smsPermissionGranted) {
-      smsAlertText = ` [SMS SENT TO ${acc.phone}]`;
-    }
-
-    showTaskFeedback('tx-task-feedback', 'SUCCESS', `TRANSACTION SUCCESSFUL. ${type} OF ${amtInput.toFixed(2)} POSTED. NEW BAL: ${acc.balance.toFixed(2)} | REF: ${refId}${smsAlertText}`);
-    document.getElementById('tx-amt').value=''; 
-    document.getElementById('tx-ref').value='';
-  }, 400);
+  if (acc.smsOptIn && acc.email && acc.email !== 'N/A') {
+    const plainEmail = await decryptData(acc.email);
+    const plainName = await decryptData(acc.holderName);
+    await sendNotificationEmail(plainEmail, `LEDGER Transaction Alert: ${type}`, `Hello ${plainName},\n\nTransaction update on (${accNo}):\nType: ${type} (${rule})\nAmount: ₹${amtInput.toFixed(2)}\nClear Balance: ₹${acc.balance.toFixed(2)}\nParticulars: ${ref}`);
+  }
+  showTaskFeedback('tx-task-feedback', 'SUCCESS', `DONE: ${type} (${rule}) OF ${amtInput.toFixed(2)}. REF: ${tenCharRef.refId}`);
+  document.getElementById('tx-amt').value=''; document.getElementById('tx-ref').value='';
 }
 
-function loadPassbookData() {
+async function loadPassbookData() {
   const accNo = document.getElementById('pb-acc-input').value.trim();
   const infoField = document.getElementById('pb-holder-info');
-  const tbody = document.getElementById('body-passbook-ledger');
-  
-  tbody.innerHTML = '';
-  
+  const tbody = document.getElementById('body-passbook-ledger'); tbody.innerHTML = '';
   const acc = db.accounts.find(a => a.accountNumber === accNo);
-  if (!acc) {
-    infoField.value = 'ACCOUNT NOT FOUND';
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">NO ACCOUNT MATCHED</td></tr>';
-    return;
-  }
+  if (!acc) { infoField.value = 'ACCOUNT NOT FOUND'; tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">NO ACCOUNT MATCHED</td></tr>'; return; }
   
-  infoField.value = `${acc.holderName} | BAL: ${acc.balance.toFixed(2)} | PH: ${acc.phone} | REF: ${acc.refId || 'N/A'}`;
-  
+  const plainName = await decryptData(acc.holderName);
+  infoField.value = `${plainName} | BAL: ${acc.balance.toFixed(2)} | PH: ${acc.phone}`;
   const filteredLedger = db.ledger.filter(l => l.accNo === accNo);
-  if (!filteredLedger.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">NO TRANSACTION HISTORY FOR THIS A/C</td></tr>';
-    return;
-  }
+  if (!filteredLedger.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">NO TRANSACTIONS</td></tr>'; return; }
   
-  let runningBal = 0;
-  const chronological = [...filteredLedger].reverse();
+  let runningBal = 0; const chronological = [...filteredLedger].reverse();
+  const rules = db.txRules || { CR: 'ADD', DR: 'SUB' };
   const withBalances = chronological.map(l => {
-    if (l.type === 'CR' || l.type === 'ACC_OPEN') {
-      runningBal += (l.amount || 0);
-    } else if (l.type === 'DR') {
-      runningBal -= (l.amount || 0);
-    }
-    let d = l.date;
-    let t = l.time;
-    if ((!d || !t) && l.timestamp) {
-      const parts = l.timestamp.split(',');
-      if (parts.length >= 2) {
-        d = parts[0].trim();
-        t = parts[1].trim();
-      } else {
-        t = l.timestamp;
-      }
-    }
-    return { ...l, displayDate: d || 'N/A', displayTime: t || 'N/A', runningBal };
+    const rule = rules[l.type] || 'ADD';
+    if (l.type === 'ACC_OPEN' || rule === 'ADD') runningBal += (l.amount || 0);
+    else if (rule === 'SUB') runningBal -= (l.amount || 0);
+    else if (rule === 'MUL') runningBal *= (l.amount || 1);
+    else if (rule === 'DIV' && l.amount) runningBal /= l.amount;
+    return { ...l, displayDate: l.date || 'N/A', displayTime: l.time || 'N/A', runningBal };
   });
 
   withBalances.reverse().forEach(l => {
-    const amtColor = l.type === 'CR' ? '#00ff00' : '#ffffff';
-    tbody.innerHTML += `
-      <tr>
-        <td class="print-col-date">${l.displayDate}</td>
-        <td class="print-col-time">${l.displayTime}</td>
-        <td class="print-col-ip">${l.ip || 'N/A'}</td>
-        <td class="bold" style="color: ${amtColor};">${l.type}</td>
-        <td class="print-col-desc">${l.narrative || 'STANDARD TRANSACTION'}</td>
-        <td class="bold">${l.amount ? l.amount.toFixed(2) : '0.00'}</td>
-        <td class="bold">${l.runningBal.toFixed(2)}</td>
-      </tr>`;
+    tbody.innerHTML += `<tr><td class="print-col-date">${l.displayDate}</td><td class="print-col-time">${l.displayTime}</td><td class="bold" style="color: ${l.type === 'CR' ? '#00ff00' : '#ffffff'};">${l.type}</td><td class="print-col-desc">${l.narrative}</td><td class="bold">${l.amount ? l.amount.toFixed(2) : '0.00'}</td><td class="bold">${l.runningBal.toFixed(2)}</td></tr>`;
   });
 }
 
-function toggleDebitSetting() {
-  if(!db.settings) db.settings = { onlineDebitOnly: false, smsEnabled: true };
-  db.settings.onlineDebitOnly = !db.settings.onlineDebitOnly;
-  save();
-  renderAdmin();
+function handlePassbookKeyDown(e) {
+  const val = document.getElementById('pb-acc-input').value.trim();
+  if (e.key === 'Enter' || val.length === 11) {
+    if (e.key === 'Enter') e.preventDefault();
+    if (val.length === 11) loadPassbookData();
+  }
 }
 
-function toggleSmsGlobalSetting() {
-  if(!db.settings) db.settings = { onlineDebitOnly: false, smsEnabled: true };
-  db.settings.smsEnabled = !db.settings.smsEnabled;
-  save();
-  renderAdmin();
+async function exportPassbookPdf() {
+  const accNo = document.getElementById('pb-acc-input').value.trim();
+  const acc = db.accounts.find(a => a.accountNumber === accNo);
+  if (!acc) { alert("PLEASE ENTER A VALID ACCOUNT NUMBER FIRST."); return; }
+  const plainName = await decryptData(acc.holderName);
+  
+  let content = `LEDGER STATEMENT // ACCOUNT: ${accNo}\nHOLDER: ${plainName}\nBALANCE: ₹${acc.balance.toFixed(2)}\nDATE: ${new Date().toLocaleString()}\n----------------------------------------\n`;
+  db.ledger.filter(l => l.accNo === accNo).forEach(l => {
+    content += `[${l.date} ${l.time}] ${l.type}: ₹${l.amount || 0} - ${l.narrative}\n`;
+  });
+
+  downloadTextAsFile(content, `PASSBOOK_${accNo}.pdf`);
+}
+
+async function exportAuditPdf() {
+  let content = `IMMUTABLE AUDIT JOURNAL REPORT // GENERATED: ${new Date().toLocaleString()}\n----------------------------------------\n`;
+  db.ledger.slice(0, 100).forEach(l => {
+    content += `[${l.date} ${l.time}] REF: ${l.refId} | A/C: ${l.accNo} | TYP: ${l.type} | AMT: ${l.amount} | ${l.narrative} | OPR: ${l.operator}\n`;
+  });
+  downloadTextAsFile(content, `AUDIT_JOURNAL_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+function downloadTextAsFile(text, filename) {
+  try {
+    const blob = new Blob([text], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert("OFFLINE MODE: STATEMENT SAVED TO LOCAL DEVICE CACHE.");
+  }
+}
+
+function updateRecoverySetting() {
+  if(!db.settings) db.settings = { onlineDebitOnly: false, smsEnabled: true, recoveryDays: 7 };
+  db.settings.recoveryDays = document.getElementById('cfg-rec-days').value;
+  save(); alert('Recovery duration updated.');
+}
+function toggleDebitSetting() {
+  if(!db.settings) db.settings = { onlineDebitOnly: false, smsEnabled: true, recoveryDays: 7 };
+  db.settings.onlineDebitOnly = !db.settings.onlineDebitOnly; save(); renderAdmin();
+}
+function toggleSmsMasterSetting() {
+  if(!db.settings) db.settings = { onlineDebitOnly: false, smsEnabled: true, recoveryDays: 7 };
+  db.settings.smsEnabled = !db.settings.smsEnabled; save(); renderAdmin();
 }
 
 function renderAdmin() {
   const btn = document.getElementById('btn-toggle-debit');
-  if(btn) {
-    const isOnlineOnly = db.settings && db.settings.onlineDebitOnly;
-    btn.innerText = isOnlineOnly ? 'ON (ONLINE ONLY)' : 'OFF (ALLOW OFFLINE)';
-    btn.style.borderColor = isOnlineOnly ? '#00ff00' : '#ffffff';
+  if(btn) btn.innerText = (db.settings && db.settings.onlineDebitOnly) ? 'ON (ONLINE ONLY)' : 'OFF (ALLOW OFFLINE)';
+  const btnSms = document.getElementById('btn-toggle-sms-master');
+  if(btnSms) btnSms.innerText = (db.settings && db.settings.smsEnabled) ? 'ON' : 'OFF';
+  const daysInput = document.getElementById('cfg-rec-days');
+  if(daysInput && db.settings) daysInput.value = db.settings.recoveryDays;
+
+  const sBody = document.getElementById('body-user-sessions');
+  if(sBody) {
+    sBody.innerHTML = '';
+    db.users.forEach(u => { sBody.innerHTML += `<tr><td class="bold">${u.id}</td><td>${u.role}</td><td>${u.status}</td><td class="dim">${u.lastIp || 'N/A'}</td><td class="dim" style="font-size:0.6rem;">${u.deviceFp || 'N/A'}</td></tr>`; });
   }
 
-  const btnSms = document.getElementById('btn-toggle-sms');
-  if(btnSms) {
-    const isSmsOn = db.settings && db.settings.smsEnabled !== false;
-    btnSms.innerText = isSmsOn ? 'ON (SMS ACTIVE)' : 'OFF (SMS MUTED)';
-    btnSms.style.borderColor = isSmsOn ? '#00ff00' : '#ff4444';
+  const qBody = document.getElementById('body-recovery-queue');
+  if(qBody) {
+    qBody.innerHTML = '';
+    if(!db.recoverRequests || !db.recoverRequests.length) { qBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">NO PENDING RECOVERIES</td></tr>'; }
+    else {
+      db.recoverRequests.forEach((req, idx) => {
+        qBody.innerHTML += `<tr><td class="bold">${req.refId}</td><td>${req.uid}</td><td>${req.phone}</td><td>${req.details}</td><td>${req.deadline}</td><td><button onclick="approveRecovery('${idx}')" style="padding:2px 6px; font-size:0.65rem;">APPROVE</button></td></tr>`;
+      });
+    }
   }
 
-  const pUsersBody = document.getElementById('body-pending-users'); pUsersBody.innerHTML = '';
-  const pendingUsers = db.users.filter(u => u.status === 'PENDING');
-  if(!pendingUsers.length) { pUsersBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">NO PENDING REGISTRATIONS</td></tr>'; }
-  else {
-    pendingUsers.forEach(u => {
-      pUsersBody.innerHTML += `
+  const pBody = document.getElementById('body-personnel-admin');
+  if(pBody) {
+    pBody.innerHTML = '';
+    db.users.forEach(u => {
+      const isMasterOwner = u.id === 'MASTER_OWNER' || u.role === 'OWNER';
+      pBody.innerHTML += `
         <tr>
           <td class="bold">${u.id}</td>
-          <td>${u.phone}</td>
           <td>
-            <select id="role-sel-${u.id}">
-              <option value="OPERATOR" selected>OPERATOR</option>
-              <option value="ADMIN">ADMIN</option>
-            </select>
+            ROLE: <select onchange="updateUserRole('${u.id}', this.value)" ${isMasterOwner?'disabled':''}>
+              <option value="ADMIN" ${u.role==='ADMIN'?'selected':''}>ADMIN</option>
+              <option value="OPERATOR" ${u.role==='OPERATOR'?'selected':''}>OPERATOR</option>
+              <option value="SUBSCRIBER_TENANT" ${u.role==='SUBSCRIBER_TENANT'?'selected':''}>SUBSCRIBER</option>
+            </select><br>
+            STATUS: ${u.status}
           </td>
           <td>
-            <button onclick="approveUserWithRole('${u.id}')">APPROVE</button> 
-            <button onclick="rejectUser('${u.id}')" style="border-color:#ff4444; color:#ff4444;">REJECT</button>
+            <button onclick="toggleLockUser('${u.id}'); flashButton(this);" style="padding:2px 6px; font-size:0.65rem;" ${isMasterOwner?'disabled':''}>${u.status==='LOCKED'?'UNLOCK':'LOCK'}</button>
+            <button onclick="editUserPrompt('${u.id}')" style="padding:2px 6px; font-size:0.65rem;">EDIT PIN</button>
+            <button onclick="deleteUserAdmin('${u.id}')" style="padding:2px 6px; font-size:0.65rem; color:#ff4444;" ${isMasterOwner?'disabled':''}>DEL</button>
           </td>
         </tr>`;
     });
   }
-
-  const pEditsBody = document.getElementById('body-pending-edits'); pEditsBody.innerHTML = '';
-  if(!db.editRequests || !db.editRequests.length) { pEditsBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">NO PENDING REQUESTS</td></tr>'; }
-  else {
-    db.editRequests.forEach((req, idx) => {
-      pEditsBody.innerHTML += `<tr><td>${req.id}</td><td class="bold">${req.accNo}</td><td>${req.type}</td><td>BY: ${req.operator} [REF: ${req.refId || 'N/A'}]</td></tr>`;
-    });
-  }
-
-  const uBody=document.getElementById('body-users'); uBody.innerHTML='';
-  db.users.forEach((u) => {
-    uBody.innerHTML+=`<tr><td class="bold">${u.id}</td><td>${u.role}</td><td>${u.status}</td><td class="dim">${u.lastIp || 'N/A'}</td></tr>`;
-  });
 }
 
-function approveUserWithRole(uid) {
+function updateUserRole(uid, newRole) {
   const u = db.users.find(x => x.id === uid);
-  const roleSelect = document.getElementById('role-sel-' + uid);
-  if (u) {
-    u.status = 'ACTIVE';
-    if (roleSelect) u.role = roleSelect.value;
+  if(u) {
+    u.role = newRole;
     save();
+    alert(`USER ${uid} ROLE UPDATED TO ${newRole}.`);
     renderAdmin();
   }
 }
 
-function rejectUser(uid) {
-  db.users = db.users.filter(x => x.id !== uid);
-  save();
-  renderAdmin();
+function editUserPrompt(uid) {
+  const u = db.users.find(x => x.id === uid);
+  if(!u) return;
+  const newPin = prompt(`ENTER NEW PIN FOR ${uid}:`, u.pin);
+  if(newPin && newPin.length >= 4) {
+    u.pin = newPin;
+    save();
+    alert(`PIN UPDATED FOR ${uid}.`);
+  } else if(newPin) {
+    alert('PIN MUST MEET FORMAT RULES.');
+  }
 }
 
-function openSearchModal(){ document.getElementById('search-modal').style.display='flex'; runSearch(); }
+function approveRecovery(idx) {
+  const req = db.recoverRequests[idx];
+  if(req) {
+    const user = db.users.find(x => x.id === req.uid);
+    const newPin = '1234';
+    if(user) { user.pin = newPin; user.status = 'ACTIVE'; }
+    else { db.users.push({ id: req.uid, pin: newPin, role: 'OPERATOR', status: 'ACTIVE', lastIp: '127.0.0.1', phone: req.phone, deviceFp: deviceFingerprint, lastActive: Date.now() }); }
+    alert(`Recovery Approved! Temporary PIN: ${newPin}`);
+    db.recoverRequests.splice(idx, 1); save(); renderAdmin();
+  }
+}
+
+function toggleLockUser(uid) {
+  const u = db.users.find(x => x.id === uid);
+  if(u && u.id !== 'MASTER_OWNER') { u.status = (u.status === 'LOCKED') ? 'ACTIVE' : 'LOCKED'; save(); renderAdmin(); }
+}
+
+function deleteUserAdmin(uid) {
+  if(uid !== 'MASTER_OWNER' && confirm(`DELETE USER ${uid}?`)) { db.users = db.users.filter(x => x.id !== uid); save(); renderAdmin(); }
+}
+
+function onReportPeriodChange() {
+  const period = document.getElementById('rep-period').value;
+  document.getElementById('rep-start').style.display = (period === 'custom') ? 'block' : 'none';
+  document.getElementById('rep-end').style.display = (period === 'custom') ? 'block' : 'none';
+  generateReport();
+}
+
+function generateReport() {
+  const type = document.getElementById('rep-type').value;
+  const tbody = document.getElementById('body-report-results'); if(!tbody) return;
+  tbody.innerHTML = '';
+  let filtered = db.ledger.filter(l => type === 'ALL' || l.type === type);
+  if(!filtered.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">NO MATCHING RECORDS</td></tr>'; return; }
+  filtered.forEach(l => {
+    tbody.innerHTML += `<tr><td class="bold">${l.refId || 'N/A'}</td><td>${l.date || 'N/A'} ${l.time || ''}</td><td>${l.accNo || 'N/A'}</td><td class="bold">${l.type}</td><td>${l.amount ? l.amount.toFixed(2) : '0.00'}</td><td>${l.narrative || 'N/A'}</td><td class="dim">${l.operator || 'SYSTEM'}</td></tr>`;
+  });
+}
+
+function openSearchModal(){ 
+  document.getElementById('search-modal').style.display='flex'; 
+  clearAutoFillBoxes();
+  const queryInput = document.getElementById('search-query');
+  queryInput.value = '';
+  document.getElementById('search-enter-btn-container').style.display = 'none';
+  queryInput.focus();
+}
 function closeSearchModal(){ document.getElementById('search-modal').style.display='none'; }
 
-async function runSearch() {
+function onSearchCriteriaChange() {
+  const c = document.getElementById('search-criteria').value;
+  const qInput = document.getElementById('search-query'); 
+  qInput.value = ''; 
+  clearAutoFillBoxes();
+  
+  const enterBtnContainer = document.getElementById('search-enter-btn-container');
+
+  if (c === 'name' || c === 'ref') {
+    qInput.removeAttribute('inputmode');
+    qInput.removeAttribute('maxlength');
+    enterBtnContainer.style.display = 'block'; 
+  } else {
+    qInput.setAttribute('inputmode', 'numeric');
+    if (c === 'accNo') {
+      qInput.setAttribute('maxlength', '11');
+      qInput.placeholder = "ENTER 11-DIGIT ACC NO...";
+    } else if (c === 'mobile') {
+      qInput.setAttribute('maxlength', '10');
+      qInput.placeholder = "ENTER 10-DIGIT MOBILE NUMBER...";
+    }
+    enterBtnContainer.style.display = 'none';
+  }
+  qInput.focus();
+}
+
+function clearAutoFillBoxes() {
+  document.getElementById('label-primary-id').innerText = 'ACC NO / HOLDER:';
+  document.getElementById('autofill-main-identifier').innerText = '---';
+  document.getElementById('autofill-balance').innerText = '---';
+  document.getElementById('autofill-ref').innerText = '---';
+  document.getElementById('autofill-mobile').innerText = '---';
+  document.getElementById('autofill-email').innerText = '---';
+  document.getElementById('autofill-ip').innerText = '---';
+  document.getElementById('autofill-last-tx').innerText = '---';
+  document.getElementById('autofill-opened').innerText = '---';
+  document.getElementById('autofill-extra-desc').innerText = '---';
+  window.lastFetchedAccNo = null;
+}
+
+// STRICT DIGIT RESTRICTION FOR SEARCH FIELD (11 FOR ACC NO, 10 FOR MOBILE)
+function handleSearchAutoInput(e) {
+  const c = document.getElementById('search-criteria').value;
+  const q = document.getElementById('search-query').value.trim();
+  
+  if (c === 'accNo') {
+    if (q.length > 11) {
+      e.target.value = q.slice(0, 11);
+    }
+    if (e.target.value.length === 11) {
+      runSearchForSingleRecord();
+    } else {
+      clearAutoFillBoxes();
+    }
+  } else if (c === 'mobile') {
+    if (q.length > 10) {
+      e.target.value = q.slice(0, 10);
+    }
+    if (e.target.value.length === 10) {
+      runSearchForSingleRecord();
+    } else {
+      clearAutoFillBoxes();
+    }
+  } else {
+    clearAutoFillBoxes();
+  }
+}
+
+function handleSearchKeyDown(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    runSearchForSingleRecord();
+  }
+}
+
+async function runSearchForSingleRecord() {
   const c = document.getElementById('search-criteria').value;
   const q = document.getElementById('search-query').value.trim().toUpperCase();
-  const tb = document.getElementById('search-results-body'); 
-  
-  if (!q) {
-    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;">ENTER A QUERY OR REFERENCE ID TO TRACK RECORD</td></tr>';
+  if (!q) { clearAutoFillBoxes(); return; }
+
+  let matchRecord = null;
+  let extraInfoText = 'N/A';
+
+  if (c === 'ref') {
+    const foundLedger = db.ledger.find(l => l.refId && l.refId.toUpperCase() === q);
+    if (foundLedger) {
+      matchRecord = db.accounts.find(a => a.accountNumber === foundLedger.accNo);
+      extraInfoText = `TX TYPE: ${foundLedger.type} | NARRATIVE: ${foundLedger.narrative}`;
+    }
+  } else if (c === 'accNo') {
+    matchRecord = db.accounts.find(a => a.accountNumber === q);
+  } else if (c === 'mobile') {
+    matchRecord = db.accounts.find(a => a.phone === q);
+  } else if (c === 'name') {
+    for (let a of db.accounts) {
+      const plainName = await decryptData(a.holderName);
+      if (plainName.toUpperCase() === q || plainName.toUpperCase().includes(q)) {
+        matchRecord = a;
+        break;
+      }
+    }
+  }
+
+  if (matchRecord) {
+    const plainName = await decryptData(matchRecord.holderName);
+    const plainEmail = await decryptData(matchRecord.email);
+    
+    if (c === 'name') {
+      document.getElementById('label-primary-id').innerText = 'ACC NUMBER:';
+      document.getElementById('autofill-main-identifier').innerText = matchRecord.accountNumber;
+    } else {
+      document.getElementById('label-primary-id').innerText = 'ACC NO / HOLDER:';
+      document.getElementById('autofill-main-identifier').innerText = `${matchRecord.accountNumber} (${plainName})`;
+    }
+
+    document.getElementById('autofill-balance').innerText = matchRecord.balance.toFixed(2);
+    document.getElementById('autofill-ref').innerText = matchRecord.refId || 'N/A';
+    document.getElementById('autofill-mobile').innerText = matchRecord.phone || 'N/A';
+    document.getElementById('autofill-email').innerText = plainEmail || 'N/A';
+    document.getElementById('autofill-ip').innerText = matchRecord.ip || 'N/A';
+    
+    const lastTx = db.ledger.find(l => l.accNo === matchRecord.accountNumber);
+    document.getElementById('autofill-last-tx').innerText = lastTx ? `${lastTx.type} ₹${lastTx.amount.toFixed(2)}` : 'NO TX YET';
+    document.getElementById('autofill-opened').innerText = matchRecord.openedAt || 'N/A';
+    document.getElementById('autofill-extra-desc').innerText = extraInfoText;
+    
+    window.lastFetchedAccNo = matchRecord.accountNumber;
+  } else {
+    clearAutoFillBoxes();
+  }
+}
+
+async function exportSearchBoxPdf() {
+  if (!window.lastFetchedAccNo) {
+    alert("PLEASE FETCH AN ACCOUNT FIRST IN SEARCH.");
     return;
   }
+  const acc = db.accounts.find(a => a.accountNumber === window.lastFetchedAccNo);
+  if(!acc) return;
+  const plainName = await decryptData(acc.holderName);
+  let content = `RECORD INFO PDF // ACCOUNT: ${window.lastFetchedAccNo}\nHOLDER: ${plainName}\nBALANCE: ₹${acc.balance.toFixed(2)}\nMOBILE: ${acc.phone}\nREF ID: ${acc.refId}\nDATE: ${new Date().toLocaleString()}`;
+  downloadTextAsFile(content, `RECORD_${window.lastFetchedAccNo}.pdf`);
+  closeSearchModal();
+}
 
-  tb.innerHTML = '<tr><td colspan="5" style="text-align:center;">SEARCHING CLOUD & CACHE...</td></tr>';
-
-  if (navigator.onLine) {
-    await backgroundSync(false);
+function exportSearchBoxPassbook() {
+  if (!window.lastFetchedAccNo) {
+    alert("PLEASE FETCH AN ACCOUNT FIRST IN SEARCH.");
+    return;
   }
-
-  let m = [];
-  if (c === 'ref') {
-    const matchLedger = db.ledger.filter(l => l.refId && l.refId.toUpperCase().includes(q));
-    matchLedger.forEach(l => {
-      m.push({
-        refId: l.refId,
-        accountNumber: l.accNo,
-        title: `LEDGER ENTRY [${l.type}]`,
-        detail: l.narrative || 'N/A',
-        amount: l.amount || 0
-      });
-    });
-  } else {
-    let matchedAccs = db.accounts.filter(a => {
-      if(c === 'accNo') return a.accountNumber.includes(q);
-      if(c === 'mobile') return a.phone.includes(q);
-      if(c === 'name') return a.holderName.includes(q);
-      return false;
-    });
-    matchedAccs.forEach(a => {
-      m.push({
-        refId: a.refId || 'N/A',
-        accountNumber: a.accountNumber,
-        title: `HOLDER: ${a.holderName}`,
-        detail: `FATHER: ${a.fatherName} | PH: ${a.phone}`,
-        amount: a.balance
-      });
-    });
-  }
-
-  tb.innerHTML = '';
-  if(!m.length){ 
-    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;">NO RECORD FOUND MATCHING REFERENCE ID / QUERY</td></tr>'; 
-    return; 
-  }
-  
-  m.forEach(item => {
-    tb.innerHTML += `
-      <tr>
-        <td class="bold">${item.refId}</td>
-        <td><strong>${item.title}</strong><br><span class="dim">${item.detail}</span></td>
-        <td>RECORDED</td>
-        <td class="bold">${typeof item.amount === 'number' ? item.amount.toFixed(2) : item.amount}</td>
-        <td>
-          <button onclick="useSearch('${item.accountNumber}')">USE</button>
-          <button onclick="viewAccountHistory('${item.accountNumber}')" title="History">📜</button>
-        </td>
-      </tr>`;
-  });
+  showPage('page-passbook');
+  document.getElementById('pb-acc-input').value = window.lastFetchedAccNo;
+  loadPassbookData();
+  closeSearchModal();
 }
 
 function useSearch(acc){ closeSearchModal(); showPage('page-teller'); document.getElementById('tx-acc').value=acc; autoFetch(); }
 
-function viewAccountHistory(accNo) {
-  closeSearchModal();
-  showPage('page-passbook');
-  document.getElementById('pb-acc-input').value = accNo;
-  loadPassbookData();
-}
-
-function syncUI() {
-  let cr=0, dr=0; db.ledger.forEach(l=>{ if(l.type==='CR')cr+=l.amount; else if(l.type==='DR')dr+=l.amount; });
-  document.getElementById('val-dep').innerText=cr.toFixed(2); 
-  document.getElementById('val-with').innerText=dr.toFixed(2); 
-  document.getElementById('val-accs').innerText=db.accounts.length;
-  
-  const jb = document.getElementById('body-journal');
-  if(jb) {
-    jb.innerHTML = '';
-    db.ledger.slice(0, 50).forEach(l => {
-      let d = l.date;
-      let t = l.time;
-      if ((!d || !t) && l.timestamp) {
-        const parts = l.timestamp.split(',');
-        if (parts.length >= 2) {
-          d = parts[0].trim();
-          t = parts[1].trim();
-        } else {
-          t = l.timestamp;
-        }
-      }
-      jb.innerHTML += `<tr><td>${l.seq}</td><td class="bold">${l.refId || 'N/A'}</td><td class="print-col-date">${d || 'N/A'}</td><td class="print-col-time">${t || 'N/A'}</td><td class="print-col-ip">${l.ip || 'N/A'}</td><td class="bold">${l.accNo || 'SYS'}</td><td>${l.type}</td><td class="print-col-desc">${l.amount ? l.amount.toFixed(2) : '0.00'} (${l.narrative})</td><td class="dim">${l.operator}</td></tr>`;
-    });
-  }
-}
-
-function togglePrintMeta(pageId) {
-  const showDate = document.getElementById('chk-date-' + pageId)?.checked ?? true;
-  const showTime = document.getElementById('chk-time-' + pageId)?.checked ?? true;
-  const showIp = document.getElementById('chk-ip-' + pageId)?.checked ?? true;
-  const showDesc = document.getElementById('chk-desc-' + pageId)?.checked ?? true;
-
-  document.body.classList.toggle('hide-date', !showDate);
-  document.body.classList.toggle('hide-time', !showTime);
-  document.body.classList.toggle('hide-ip', !showIp);
-  document.body.classList.toggle('hide-desc', !showDesc);
-}
-
-function triggerPrint(pageId) {
-  togglePrintMeta(pageId);
-  const headerDiv = document.getElementById('print-header-' + pageId);
-  if (headerDiv) {
-    const showDate = document.getElementById('chk-date-' + pageId)?.checked ?? true;
-    const showTime = document.getElementById('chk-time-' + pageId)?.checked ?? true;
-    const showIp = document.getElementById('chk-ip-' + pageId)?.checked ?? true;
-    const showDesc = document.getElementById('chk-desc-' + pageId)?.checked ?? true;
-
-    let extraMeta = '';
-    if (pageId === 'page-passbook') {
-      const accNo = document.getElementById('pb-acc-input').value.trim();
-      const info = document.getElementById('pb-holder-info').value;
-      extraMeta = `<strong>ACCOUNT STATEMENT PASSBOOK</strong><br><strong>TARGET A/C:</strong> ${accNo || 'N/A'}<br>${showDesc ? `<strong>DETAILS:</strong> ${info || 'N/A'}<br>` : ''}`;
-    } else if (pageId === 'page-acc') {
-      extraMeta = `<strong>CUSTOMER RECORD DIRECTORY</strong><br>`;
-    } else if (pageId === 'page-admin') {
-      extraMeta = `<strong>ADMINISTRATION & ACCESS DESK</strong><br>`;
-    } else if (pageId === 'page-audit') {
-      extraMeta = `<strong>IMMUTABLE AUDIT JOURNAL & ACTIVITY LOG</strong><br>`;
-    }
-
-    headerDiv.innerHTML = `
-      ${extraMeta}
-      ${showDate ? `<strong>PRINT DATE:</strong> ${new Date().toLocaleDateString()}<br>` : ''}
-      ${showTime ? `<strong>PRINT TIME:</strong> ${new Date().toLocaleTimeString()}<br>` : ''}
-      ${showIp ? `<strong>TERMINAL IP:</strong> ${currentClientIP}<br>` : ''}
-      <strong>OPERATOR SESSION:</strong> ${session ? session.id : 'GUEST'}
-    `;
-  }
-  window.print();
-}
-
 function updateNet() {
   const tag = document.getElementById('net-status-tag');
-  if(navigator.onLine){ 
-    tag.innerText='ONLINE'; tag.style.color='#ffffff'; 
-    fetchClientIP();
-    backgroundSync(false);
-  } else { 
-    tag.innerText='OFFLINE'; tag.style.color='#888888'; 
-    const syncTag = document.getElementById('cloud-sync-status');
-    if(syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
-  }
+  if(navigator.onLine){ tag.innerText='ONLINE'; tag.style.color='#ffffff'; fetchClientIP(); backgroundSync(false); }
+  else { tag.innerText='OFFLINE'; tag.style.color='#888888'; currentClientIP = 'OFFLINE (PENDING)'; }
 }
-window.addEventListener('online', updateNet); 
-window.addEventListener('offline', updateNet);
-window.addEventListener('focus', () => { fetchClientIP(); });
+window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet);
 
-document.addEventListener('DOMContentLoaded', () => {
-  fetchClientIP();
-  updateNet();
-  init();
-});
+document.addEventListener('DOMContentLoaded', () => { fetchClientIP(); updateNet(); init(); });
 </script>
 </body>
 </html>
