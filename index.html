@@ -731,7 +731,7 @@ let pendingRegData = null;
 let session = null;
 
 const SUPABASE_URL = 'https://anwwhrtszdrjdmdrtvoi.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFud3docnRzemRyamRtZHJ0dm9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NjgwODgsImV4cCI6MjEwNTE0NDA4OH0.DJb9igB0QftEZucScZsBnggUPK0-7Syjw9PLCUMFmqM';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFud3docnzsZmdyamRydHZvaSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzg5NTY4MDg4LCJleHAiOjIxMDUxNDQwODh9.DJb9igB0QftEZucScZsBnggUPK0-7Syjw9PLCUMFmqM';
 
 // --- SAFE SUPABASE INITIALIZATION ---
 let supabaseClient = null;
@@ -1371,10 +1371,14 @@ async function requestSmsBrowserPermission() {
   alert(smsPermissionGranted ? 'SMS PERMISSION GRANTED.' : 'SMS PERMISSION DENIED.');
 }
 
+// --- NON-BLOCKING LOGIN HANDLER ---
 async function handleLogon(e) {
   e.preventDefault(); 
   showLoadingFeedback('login-task-feedback');
-  await fetchClientIP();
+  
+  // Non-blocking IP fetch to prevent freezing on mobile networks
+  fetchClientIP().catch(() => { currentClientIP = '127.0.0.1 (LOCAL)'; });
+
   setTimeout(() => {
     const uid=document.getElementById('inp-uid').value.trim().toUpperCase(), pin=document.getElementById('inp-pin').value.trim();
     let u = db.users.find(x=>x.id===uid && x.pin===pin);
@@ -1391,8 +1395,8 @@ async function handleLogon(e) {
     document.getElementById('session-tag').innerText=`${u.id} [${u.role}]`;
     document.getElementById('post-login-controls').style.display = 'flex';
     configureSection7ForRole(u);
-    setTimeout(() => { showPage('page-dash'); syncUI(); }, 600);
-  }, 400);
+    setTimeout(() => { showPage('page-dash'); syncUI(); }, 400);
+  }, 200);
 }
 
 function openStatusPopupModal() {
