@@ -1,6 +1,6 @@
 name = "my-website"
-pages_build_output_dir = "./"
-compatibility_date = "2026-09-15"
+pages_build_output_dir = "."
+compatibility_date = "2026-09-18"
 
-[vars]
-# Disables pages functions compilation
+[pages]
+functions_directory = ""
