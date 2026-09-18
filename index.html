@@ -54,7 +54,6 @@
     .status-bar-divider { border-bottom: 2px dotted var(--fg); width: 100%; margin-bottom: 2px; }
     .ledger-header-brand { width: 100%; text-align: center; font-size: 0.85rem; border-bottom: 1px dashed var(--fg); padding-bottom: 2px; margin-bottom: 2px; letter-spacing: 1px; }
 
-    /* Post-login action bar & nav bar (Hidden pre-login as requested) */
     .post-login-controls { display: none; flex-direction: column; gap: 4px; }
 
     .mid-action-bar { border: 2px solid var(--fg); border-top: none; padding: 6px 8px; background: #111; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
@@ -206,7 +205,6 @@
 
   <!-- STATIC UPPER DOCK -->
   <div id="static-upper-dock">
-    <!-- Above yellow dotted line: Always visible on both pre-login and post-login pages -->
     <div class="status-bar">
       <div class="ledger-header-brand">LEDGER // MASTER SECURE TERMINAL</div>
       <div>NET: <span id="net-status-tag" class="blink">CHECKING...</span></div>
@@ -215,7 +213,6 @@
     </div>
     <div class="status-bar-divider"></div>
 
-    <!-- Below yellow dotted line: 7 navigation bars, message, and search directory appear ONLY post-login -->
     <div class="post-login-controls" id="post-login-controls">
       <div class="mid-action-bar" id="mid-action-bar">
         <button class="btn-msg" onclick="openChatModal(); flashButton(this);">💬 MESSAGES <span id="msg-badge" class="msg-badge" style="display:inline-block; position:static; margin-left:4px;">0</span></button>
@@ -494,7 +491,7 @@
       </div>
     </div>
 
-    <!-- SECTION 7 (DYNAMIC ROLE-BASED ADMIN / SUBSCRIBER / USER CONTROL WITH SIGN OUT) -->
+    <!-- SECTION 7 -->
     <div class="view-page" id="page-section-7">
       <div class="box" id="section-7-container">
         <div class="box-title"><span id="section-7-title">ADMINISTRATION & MASTER CONTROL</span></div>
@@ -717,9 +714,9 @@
       </div>
     </div>
 
-  </div> <!-- End of sliding content container -->
+  </div>
 
-</div> <!-- End of terminal container -->
+</div>
 
 <script>
 const DB_KEY = 'LEDGER_MASTER_DB_PERSISTENT';
@@ -734,9 +731,15 @@ let pendingRegData = null;
 
 const SUPABASE_URL = 'https://anwwhrtszdrjdmdrtvoi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFud3docnzsZmdyamRydHZvaSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzg5NTY4MDg4LCJleHAiOjIxMDUxNDQwODh9.DJb9igB0QftEZucScZsBnggUPK0-7Syjw9PLCUMFmqM';
+
+// --- SAFE SUPABASE INITIALIZATION ---
 let supabaseClient = null;
 if (window.supabase) {
-  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  try {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch (e) {
+    supabaseClient = null;
+  }
 }
 
 // --- HARD CLIENT-SIDE ENCRYPTION LAYER WITH V3 SCHEMA COMPATIBILITY ---
@@ -850,21 +853,15 @@ function flashButton(btn) {
   }, 200);
 }
 
-// STRICT MOBILE NUMBER VALIDATOR
 function validateMobileInput(inputElem) {
   const val = inputElem.value.replace(/[^0-9]/g, '');
   inputElem.value = val;
   const warningElem = document.getElementById(inputElem.id + '-warning');
   if (warningElem) {
-    if (val.length > 0 && val.length !== 10) {
-      warningElem.style.display = 'block';
-    } else {
-      warningElem.style.display = 'none';
-    }
+    warningElem.style.display = (val.length > 0 && val.length !== 10) ? 'block' : 'none';
   }
 }
 
-// DYNAMIC PIN VALIDATOR SHOWING OWNER'S SET RULE
 function validatePinInput(inputElem) {
   const rule = db.settings.passwordRule || 'MIXED_CHAR';
   const val = inputElem.value;
@@ -892,11 +889,9 @@ function validatePinInput(inputElem) {
     const hasSpec = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(val);
     valid = val.length >= 8 && hasUpper && hasLower && hasNum && hasSpec;
   }
-
   hintBox.style.color = valid ? 'var(--accent-green)' : 'var(--accent-red)';
 }
 
-// 10-CHARACTER REF ID COMBINATION OF ALPHA, NUM, UPPER, LOWER, SPECIAL
 async function generateTenCharRefId() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
   let result = '';
@@ -928,17 +923,8 @@ function validateEmailInput(inputElem) {
   const val = inputElem.value.trim();
   const warningElem = document.getElementById(inputElem.id + '-warning') || document.getElementById('email-warning');
   if (!warningElem) return;
-
-  if (val === '') {
-    warningElem.style.display = 'none';
-    return;
-  }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(val)) {
-    warningElem.style.display = 'block';
-  } else {
-    warningElem.style.display = 'none';
-  }
+  if (val === '') { warningElem.style.display = 'none'; return; }
+  warningElem.style.display = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) ? 'none' : 'block';
 }
 
 async function sendNotificationEmail(recipientEmail, subject, messageContent) {
@@ -959,7 +945,6 @@ function cleanupChatsLifecycle() {
   const now = Date.now();
   const fortyFiveDaysMs = 45 * 24 * 60 * 60 * 1000;
   if (!db.purgedChats) db.purgedChats = [];
-
   db.chats = db.chats.filter(c => {
     const age = now - (c.timestamp || now);
     if (age > fortyFiveDaysMs) {
@@ -971,14 +956,10 @@ function cleanupChatsLifecycle() {
 }
 
 function adminRecoverChats() {
-  if(!db.purgedChats || !db.purgedChats.length) {
-    alert("NO PURGED CHATS IN ARCHIVE.");
-    return;
-  }
+  if(!db.purgedChats || !db.purgedChats.length) { alert("NO PURGED CHATS IN ARCHIVE."); return; }
   const now = Date.now();
   const sixtyDaysMs = 60 * 24 * 60 * 60 * 1000;
   let recoveredCount = 0;
-
   db.purgedChats = db.purgedChats.filter(c => {
     const ageSincePurge = now - (c.purgedAt || now);
     if (ageSincePurge <= sixtyDaysMs) {
@@ -1005,65 +986,31 @@ function executeInterestCalculation() {
   const type = document.getElementById('interest-type').value;
   const time = parseFloat(document.getElementById('interest-time').value) || 1;
 
-  if(isNaN(rate) || rate <= 0) {
-    alert("PLEASE ENTER A VALID INTEREST RATE.");
-    return;
-  }
-
+  if(isNaN(rate) || rate <= 0) { alert("PLEASE ENTER A VALID INTEREST RATE."); return; }
   let targets = [];
-  if (scope === 'ALL') {
-    targets = db.accounts;
-  } else if (scope === 'SPECIFIC') {
+  if (scope === 'ALL') targets = db.accounts;
+  else if (scope === 'SPECIFIC') {
     const found = db.accounts.find(a => a.accountNumber === target);
     if(found) targets = [found];
-  } else if (scope === 'TYPE') {
-    targets = db.accounts;
-  }
+  } else if (scope === 'TYPE') targets = db.accounts;
 
-  if(!targets.length) {
-    alert("NO TARGET ACCOUNTS FOUND FOR INTEREST APPLICATION.");
-    return;
-  }
-
+  if(!targets.length) { alert("NO TARGET ACCOUNTS FOUND FOR INTEREST APPLICATION."); return; }
   let appliedCount = 0;
   targets.forEach(acc => {
     let interestAmt = 0;
-    if (type === 'SI') {
-      interestAmt = (acc.balance * rate * time) / 100;
-    } else {
+    if (type === 'SI') interestAmt = (acc.balance * rate * time) / 100;
+    else {
       const amount = acc.balance * Math.pow((1 + (rate / 100)), time);
       interestAmt = amount - acc.balance;
     }
-
     if (interestAmt > 0) {
       acc.balance += interestAmt;
       acc.lastAccessed = new Date().toLocaleString();
       appliedCount++;
     }
   });
-
   save();
   alert(`INTEREST APPLIED SUCCESSFULLY TO ${appliedCount} ACCOUNT(S) USING ${type} MODEL.`);
-}
-
-function addNewCustomTxType() {
-  const codeInput = document.getElementById('new-tx-type-code');
-  const ruleSelect = document.getElementById('new-tx-type-rule');
-  const code = codeInput.value.trim().toUpperCase();
-  const rule = ruleSelect.value;
-  if(!code) return;
-
-  if(!db.customTxTypes) db.customTxTypes = ['CR', 'DR'];
-  if(!db.txRules) db.txRules = { CR: 'ADD', DR: 'SUB' };
-
-  if(!db.customTxTypes.includes(code)) {
-    db.customTxTypes.push(code);
-  }
-  db.txRules[code] = rule;
-  save();
-  updateTxTypeDropdowns();
-  alert(`TRANSACTION TYPE '${code}' WITH RULE '${rule}' CREATED SUCCESSFULLY.`);
-  codeInput.value = '';
 }
 
 function updatePasswordRuleSetting() {
@@ -1080,9 +1027,7 @@ function updateTxTypeDropdowns() {
   const currentVal = sel.value;
   const types = db.customTxTypes || ['CR', 'DR'];
   sel.innerHTML = '';
-  types.forEach(t => {
-    sel.innerHTML += `<option value="${t}">${t}</option>`;
-  });
+  types.forEach(t => { sel.innerHTML += `<option value="${t}">${t}</option>`; });
   sel.value = types.includes(currentVal) ? currentVal : types[0];
 }
 
@@ -1109,12 +1054,8 @@ function importBackupData(e) {
         save();
         alert("BACKUP RESTORED SUCCESSFULLY.");
         location.reload();
-      } else {
-        alert("INVALID BACKUP FILE FORMAT.");
-      }
-    } catch(err) {
-      alert("FAILED TO PARSE BACKUP JSON.");
-    }
+      } else { alert("INVALID BACKUP FILE FORMAT."); }
+    } catch(err) { alert("FAILED TO PARSE BACKUP JSON."); }
   };
   reader.readAsText(file);
 }
@@ -1125,32 +1066,36 @@ function migrateLegacyData() {
   if (!existingData) {
     for (const key of legacyKeys) {
       const oldData = localStorage.getItem(key);
-      if (oldData) {
-        localStorage.setItem(DB_KEY, oldData);
-        existingData = oldData;
-        break;
-      }
+      if (oldData) { localStorage.setItem(DB_KEY, oldData); existingData = oldData; break; }
     }
   }
   return existingData;
 }
 
+// --- TIMEOUT-SAFE BACKGROUND SYNC FUNCTION ---
 async function backgroundSync(isInitial = false) {
   if (isSyncing) return;
   isSyncing = true;
   const syncTag = document.getElementById('cloud-sync-status');
 
   try {
-    if (navigator.onLine) {
+    if (navigator.onLine && supabaseClient) {
       if (syncTag && isInitial) syncTag.innerText = 'SYNCING...';
       let cloudData = null;
-      if (supabaseClient) {
-        const { data, error } = await supabaseClient
-          .from('terminal_store')
-          .select('data')
-          .eq('user_path', 'cloudflare_user')
-          .single();
+      
+      const fetchPromise = supabaseClient
+        .from('terminal_store')
+        .select('data')
+        .eq('user_path', 'cloudflare_user')
+        .single();
+        
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000));
+      
+      try {
+        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
         if (!error && data) cloudData = data.data;
+      } catch (err) {
+        // Fallback gracefully to local storage if offline or timed out
       }
 
       if (cloudData && cloudData.users) {
@@ -1182,7 +1127,7 @@ async function backgroundSync(isInitial = false) {
       if (syncTag) syncTag.innerText = 'SYNCED [REAL-TIME]';
       pushDataToServerSilent();
     } else {
-      if (syncTag) syncTag.innerText = 'OFFLINE (LOCAL QUEUED)';
+      if (syncTag) syncTag.innerText = 'OFFLINE (LOCAL MODE)';
     }
   } catch (err) {
     if (syncTag) syncTag.innerText = 'OFFLINE (LOCAL)';
@@ -1247,7 +1192,7 @@ async function init() {
           u.lastActive = Date.now();
           setTimeout(() => {
             document.getElementById('session-tag').innerText = `${u.id} [${u.role}]`;
-            document.getElementById('post-login-controls').style.display = 'flex'; // Reveal post-login controls (7 nav bars, messages, search)
+            document.getElementById('post-login-controls').style.display = 'flex';
             configureSection7ForRole(u);
             showPage('page-dash');
             syncUI();
@@ -1259,7 +1204,7 @@ async function init() {
   if (session) {
     session.lastActive = Date.now();
     syncUI();
-    document.getElementById('post-login-controls').style.display = 'flex'; // Reveal post-login controls
+    document.getElementById('post-login-controls').style.display = 'flex';
     configureSection7ForRole(session);
   }
   setInterval(() => { backgroundSync(false); }, 3000);
@@ -1359,7 +1304,6 @@ function showPage(id) {
   }
 
   focusFirstInputInPage(id);
-
   if(id==='page-admin' || id==='page-section-7') { renderAdmin(); generateReport(); }
   if(id==='page-chat') { renderChat(); markMessagesRead(); }
 }
@@ -1410,16 +1354,9 @@ function toggleLoginAction(mode) {
   const regBox = document.getElementById('reg-box');
   const recoverBox = document.getElementById('recover-box');
   loginBox.style.display = 'none'; regBox.style.display = 'none'; recoverBox.style.display = 'none';
-  if (mode === 'login') {
-    loginBox.style.display = 'block';
-    focusFirstInputInPage('page-login');
-  } else if (mode === 'reg') { 
-    regBox.style.display = 'block'; 
-    focusFirstInputInPage('reg-box');
-  } else if (mode === 'recover') { 
-    recoverBox.style.display = 'block'; 
-    focusFirstInputInPage('recover-box');
-  }
+  if (mode === 'login') { loginBox.style.display = 'block'; focusFirstInputInPage('page-login'); }
+  else if (mode === 'reg') { regBox.style.display = 'block'; focusFirstInputInPage('reg-box'); }
+  else if (mode === 'recover') { recoverBox.style.display = 'block'; focusFirstInputInPage('recover-box'); }
 }
 
 async function requestSmsBrowserPermission() {
@@ -1451,7 +1388,7 @@ async function handleLogon(e) {
     session=u; save();
     showTaskFeedback('login-task-feedback', 'SUCCESS', `Logged in as ${u.id} [${u.role}]`);
     document.getElementById('session-tag').innerText=`${u.id} [${u.role}]`;
-    document.getElementById('post-login-controls').style.display = 'flex'; // Reveal post-login controls (7 nav bars, messages, search)
+    document.getElementById('post-login-controls').style.display = 'flex';
     configureSection7ForRole(u);
     setTimeout(() => { showPage('page-dash'); syncUI(); }, 600);
   }, 400);
@@ -1464,9 +1401,7 @@ function openStatusPopupModal() {
   document.getElementById('prelogin-ref-input').focus();
 }
 
-function closeStatusPopupModal() {
-  document.getElementById('status-popup-modal').style.display = 'none';
-}
+function closeStatusPopupModal() { document.getElementById('status-popup-modal').style.display = 'none'; }
 
 function openChatModal() {
   const chatBody = `
@@ -1530,7 +1465,6 @@ async function sendModalChatMessage(e) {
   const msgText = input.value.trim();
   const targetVal = document.getElementById('modal-chat-recipient-target').value.trim().toUpperCase();
   if(!msgText || !session) return;
-
   if(!db.chats) db.chats = [];
   db.chats.push({
     sender: session.id,
@@ -1572,9 +1506,7 @@ function updateRegistrationRoleDropdown() {
     <option value="GENERAL_USER">ROLE: GENERAL USER</option>
   `;
   if(db.customRoles) {
-    db.customRoles.forEach(r => {
-      sel.innerHTML += `<option value="${r.name}">${r.name}</option>`;
-    });
+    db.customRoles.forEach(r => { sel.innerHTML += `<option value="${r.name}">${r.name}</option>`; });
   }
 }
 
@@ -1582,10 +1514,8 @@ function createNewCustomRole() {
   const nameInput = document.getElementById('new-role-name');
   const roleName = nameInput.value.trim().toUpperCase();
   if(!roleName) { alert("ENTER A VALID ROLE NAME."); return; }
-
   const checkboxes = document.querySelectorAll('.role-perm-chk:checked');
   const perms = Array.from(checkboxes).map(cb => cb.value);
-
   if(!db.customRoles) db.customRoles = [];
   if(!db.customRoles.some(r => r.name === roleName)) {
     db.customRoles.push({ name: roleName, permissions: perms });
@@ -1593,9 +1523,7 @@ function createNewCustomRole() {
     updateRegistrationRoleDropdown();
     alert(`CUSTOM ROLE '${roleName}' CREATED WITH SELECTED PERMISSIONS.`);
     nameInput.value = '';
-  } else {
-    alert("ROLE ALREADY EXISTS.");
-  }
+  } else { alert("ROLE ALREADY EXISTS."); }
 }
 
 async function handleUserRegistration(e) {
@@ -1615,23 +1543,20 @@ async function handleUserRegistration(e) {
   }
 
   const generatedUserId = 'USR-' + tenCharRef.refId.slice(0, 6).toUpperCase();
-
   if (mode === 'EMAIL_OTP') {
     pendingRegOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
     pendingRegData = { id: generatedUserId, name, pin, phone, role, email, refId: tenCharRef.refId, ip: tenCharRef.ip };
     if (email) {
       await sendNotificationEmail(email, "LEDGER: Registration Verification Code", `Hello ${name},\n\nYour User ID is: ${generatedUserId}\nYour 10-char Ref ID is: ${tenCharRef.refId}\n\nOTP Code: ${pendingRegOtpCode}`);
     }
-    showTaskFeedback('reg-task-feedback', 'SUCCESS', `OTP sent. USER ID: ${generatedUserId} | REF ID: ${tenCharRef.refId}. DONT SHARE IT WITH ANYONE!`);
+    showTaskFeedback('reg-task-feedback', 'SUCCESS', `OTP sent. USER ID: ${generatedUserId} | REF ID: ${tenCharRef.refId}.`);
     return;
   }
 
   db.users.push({ id: generatedUserId, name, pin, role, status: 'ACTIVE', lastIp: tenCharRef.ip, phone, email, deviceFp: deviceFingerprint, refId: tenCharRef.refId, lastActive: Date.now() });
-  
   db.ledger.unshift({ seq: db.ledger.length+1, refId: tenCharRef.refId, date: tenCharRef.date, time: tenCharRef.time, ip: tenCharRef.ip, accNo: 'SYSTEM', type: 'REG', amount: 0, operator: generatedUserId, narrative: `NEW USER REGISTERED [REF: ${tenCharRef.refId}]` });
   save();
-
-  showTaskFeedback('reg-task-feedback', 'SUCCESS', `SUCCESS! USER ID: ${generatedUserId} | 10-CHAR REF ID: ${tenCharRef.refId}. DONT SHARE IT WITH ANYONE!`);
+  showTaskFeedback('reg-task-feedback', 'SUCCESS', `SUCCESS! USER ID: ${generatedUserId} | 10-CHAR REF ID: ${tenCharRef.refId}.`);
 }
 
 function trackPreLoginRef(e) {
@@ -1642,7 +1567,6 @@ function trackPreLoginRef(e) {
     resultBox.style.color = 'var(--dim)';
     return;
   }
-
   const foundLedger = db.ledger.find(l => l.refId && l.refId === query);
   if (foundLedger) {
     resultBox.innerHTML = `FOUND PRE-LOGIN REF: ${foundLedger.refId} | DATE: ${foundLedger.date} ${foundLedger.time} | TYPE: ${foundLedger.type} | NARRATIVE: ${foundLedger.narrative}`;
@@ -1687,10 +1611,6 @@ async function handleRecoverySubmission(e) {
   e.target.reset();
 }
 
-async function handlePasswordRecoveryRequest(e) {
-  e.preventDefault();
-}
-
 async function adminCreateUser(e) {
   e.preventDefault();
   showLoadingFeedback('admin-create-task-feedback');
@@ -1711,7 +1631,7 @@ async function adminCreateUser(e) {
 function confirmSignOut() { if (confirm("DO YOU WANT TO SIGN OUT?")) logout(); }
 function logout() { 
   session=null; localStorage.removeItem(DB_KEY + '_SESSION');
-  document.getElementById('post-login-controls').style.display='none'; // Hide post-login controls on sign out
+  document.getElementById('post-login-controls').style.display='none';
   document.getElementById('session-tag').innerText='DISCONNECTED'; toggleLoginAction('login'); showPage('page-login'); 
 }
 
@@ -1973,7 +1893,6 @@ async function exportPassbookPdf() {
   db.ledger.filter(l => l.accNo === accNo).forEach(l => {
     content += `[${l.date} ${l.time}] ${l.type}: ₹${l.amount || 0} - ${l.narrative}\n`;
   });
-
   downloadTextAsFile(content, `PASSBOOK_${accNo}.pdf`);
 }
 
@@ -1996,9 +1915,7 @@ function downloadTextAsFile(text, filename) {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-  } catch (err) {
-    alert("OFFLINE MODE: STATEMENT SAVED TO LOCAL DEVICE CACHE.");
-  }
+  } catch (err) { alert("OFFLINE MODE: STATEMENT SAVED TO LOCAL DEVICE CACHE."); }
 }
 
 function updateRecoverySetting() {
@@ -2068,25 +1985,15 @@ function renderAdmin() {
 
 function updateUserRole(uid, newRole) {
   const u = db.users.find(x => x.id === uid);
-  if(u) {
-    u.role = newRole;
-    save();
-    alert(`USER ${uid} ROLE UPDATED TO ${newRole}.`);
-    renderAdmin();
-  }
+  if(u) { u.role = newRole; save(); alert(`USER ${uid} ROLE UPDATED TO ${newRole}.`); renderAdmin(); }
 }
 
 function editUserPrompt(uid) {
   const u = db.users.find(x => x.id === uid);
   if(!u) return;
   const newPin = prompt(`ENTER NEW PIN FOR ${uid}:`, u.pin);
-  if(newPin && newPin.length >= 4) {
-    u.pin = newPin;
-    save();
-    alert(`PIN UPDATED FOR ${uid}.`);
-  } else if(newPin) {
-    alert('PIN MUST MEET FORMAT RULES.');
-  }
+  if(newPin && newPin.length >= 4) { u.pin = newPin; save(); alert(`PIN UPDATED FOR ${uid}.`); }
+  else if(newPin) { alert('PIN MUST MEET FORMAT RULES.'); }
 }
 
 function approveRecovery(idx) {
@@ -2143,7 +2050,6 @@ function onSearchCriteriaChange() {
   const qInput = document.getElementById('search-query'); 
   qInput.value = ''; 
   clearAutoFillBoxes();
-  
   const enterBtnContainer = document.getElementById('search-enter-btn-container');
 
   if (c === 'name' || c === 'ref') {
@@ -2178,39 +2084,22 @@ function clearAutoFillBoxes() {
   window.lastFetchedAccNo = null;
 }
 
-// STRICT DIGIT RESTRICTION FOR SEARCH FIELD (11 FOR ACC NO, 10 FOR MOBILE)
 function handleSearchAutoInput(e) {
   const c = document.getElementById('search-criteria').value;
   const q = document.getElementById('search-query').value.trim();
-  
   if (c === 'accNo') {
-    if (q.length > 11) {
-      e.target.value = q.slice(0, 11);
-    }
-    if (e.target.value.length === 11) {
-      runSearchForSingleRecord();
-    } else {
-      clearAutoFillBoxes();
-    }
+    if (q.length > 11) e.target.value = q.slice(0, 11);
+    if (e.target.value.length === 11) runSearchForSingleRecord();
+    else clearAutoFillBoxes();
   } else if (c === 'mobile') {
-    if (q.length > 10) {
-      e.target.value = q.slice(0, 10);
-    }
-    if (e.target.value.length === 10) {
-      runSearchForSingleRecord();
-    } else {
-      clearAutoFillBoxes();
-    }
-  } else {
-    clearAutoFillBoxes();
-  }
+    if (q.length > 10) e.target.value = q.slice(0, 10);
+    if (e.target.value.length === 10) runSearchForSingleRecord();
+    else clearAutoFillBoxes();
+  } else { clearAutoFillBoxes(); }
 }
 
 function handleSearchKeyDown(e) {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    runSearchForSingleRecord();
-  }
+  if (e.key === 'Enter') { e.preventDefault(); runSearchForSingleRecord(); }
 }
 
 async function runSearchForSingleRecord() {
@@ -2263,18 +2152,12 @@ async function runSearchForSingleRecord() {
     document.getElementById('autofill-last-tx').innerText = lastTx ? `${lastTx.type} ₹${lastTx.amount.toFixed(2)}` : 'NO TX YET';
     document.getElementById('autofill-opened').innerText = matchRecord.openedAt || 'N/A';
     document.getElementById('autofill-extra-desc').innerText = extraInfoText;
-    
     window.lastFetchedAccNo = matchRecord.accountNumber;
-  } else {
-    clearAutoFillBoxes();
-  }
+  } else { clearAutoFillBoxes(); }
 }
 
 async function exportSearchBoxPdf() {
-  if (!window.lastFetchedAccNo) {
-    alert("PLEASE FETCH AN ACCOUNT FIRST IN SEARCH.");
-    return;
-  }
+  if (!window.lastFetchedAccNo) { alert("PLEASE FETCH AN ACCOUNT FIRST IN SEARCH."); return; }
   const acc = db.accounts.find(a => a.accountNumber === window.lastFetchedAccNo);
   if(!acc) return;
   const plainName = await decryptData(acc.holderName);
@@ -2284,10 +2167,7 @@ async function exportSearchBoxPdf() {
 }
 
 function exportSearchBoxPassbook() {
-  if (!window.lastFetchedAccNo) {
-    alert("PLEASE FETCH AN ACCOUNT FIRST IN SEARCH.");
-    return;
-  }
+  if (!window.lastFetchedAccNo) { alert("PLEASE FETCH AN ACCOUNT FIRST IN SEARCH."); return; }
   showPage('page-passbook');
   document.getElementById('pb-acc-input').value = window.lastFetchedAccNo;
   loadPassbookData();
