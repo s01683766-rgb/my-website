@@ -1228,5 +1228,483 @@ function useSearch(accNo) {
 
 document.addEventListener('DOMContentLoaded', () => init());
 </script>
+<script>
+/* ===== PATCH v13: single-truth ledger, offline queue, server-issued refs, PIN-gated admin, chat, PDF ===== */
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random();
+const ROLES=['ADMIN','OPERATOR','SUBSCRIBER_TENANT','GENERAL_USER'],KEYS=['users','accounts','ledger','chats','recoverRequests'];
+const PW={'4N':{re:/^\d{4}$/,h:'PIN: EXACTLY 4 DIGITS (0-9)',n:4,num:1},'8N':{re:/^\d{8}$/,h:'PIN: EXACTLY 8 DIGITS (0-9)',n:8,num:1},'8M':{re:/^(?=.*[A-Z])(?=.*\d)(?=.*[@#$%&*!]).{8}$/,h:'8 CHARS: LETTERS + NUMBERS, 1 CAPITAL, 1 SPECIAL (@#$%&*!)',n:8}};
+const rule=()=>PW[(db.settings&&db.settings.pwdRule)||localStorage.PWR||'4N']||PW['4N'];
+const isOwner=()=>session&&session.role==='OWNER',canEdit=()=>can('edit');
+function norm(){KEYS.concat('dead').forEach(k=>db[k]=db[k]||[]);db.settings=db.settings||{};db.refCtr=db.refCtr||100000;db.epoch=db.epoch||0;
+ db.accounts.forEach(a=>{a.id=a.id||a.accountNumber;a.sync=a.sync||'SYNCED';a.mt=a.mt||0});
+ db.ledger.forEach(l=>{l.id=l.id||'L'+l.refId+'_'+l.seq;l.status=l.status||'SYNCED';l.ts=l.ts||0;l.mt=l.mt||0});
+ db.chats.forEach((c,i)=>{c.id=c.id||'C'+i+c.time;c.to=c.to||'STAFF';c.ts=c.ts||0});
+ db.recoverRequests.forEach((r,i)=>r.id=r.id||'R'+i);db.users.forEach(u=>u.mt=u.mt||0)}
+const eff=l=>l.status!=='FAILED'&&!l.void;
+const dl=l=>l.delta!==undefined?l.delta:(l.type==='CR'?l.amount:l.type==='DR'?-l.amount:0);
+const bal=n=>db.ledger.reduce((s,l)=>l.accNo===n&&eff(l)?s+dl(l):s,0);
+const recalc=()=>db.accounts.forEach(a=>a.balance=a.accountNumber?bal(a.accountNumber):0);
+const qCount=()=>db.ledger.filter(l=>l.status==='PENDING').length+db.accounts.filter(a=>!a.accountNumber).length+db.recoverRequests.filter(r=>!r.refId).length;
+/* ---- refs: 6-digit numeric inside app, 10-char alnum for pre-login requests; issued ONLY at successful cloud sync ---- */
+const A32='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function long(){let s;do{s='';for(let i=0;i<10;i++)s+=A32[crypto.getRandomValues(new Uint8Array(1))[0]%32]}while(db.recoverRequests.some(r=>r.refId===s));return s}
+function issue(){const now=Date.now();
+ db.accounts.filter(a=>!a.accountNumber).sort((a,b)=>a.ts-b.ts).forEach(a=>{a.accountNumber=getSerial();a.sync='SYNCED';a.mt=now;db.ledger.forEach(l=>{if(l.accId===a.id)l.accNo=a.accountNumber})});
+ let seq=db.ledger.reduce((m,l)=>Math.max(m,l.seq||0),0);
+ db.ledger.filter(l=>l.status==='PENDING').sort((a,b)=>a.ts-b.ts).forEach(l=>{l.refId=String(++db.refCtr);l.seq=++seq;l.mt=now;
+  if(dl(l)<0&&bal(l.accNo)<0){l.status='FAILED';l.why='INSUFFICIENT BALANCE AT SYNC'}else l.status='SYNCED';
+  if(l.type==='ACC_OPEN'){const a=db.accounts.find(x=>x.id===l.accId);if(a)a.refId=l.refId}});
+ db.recoverRequests.filter(r=>!r.refId).forEach(r=>{r.refId=long();r.sync='SYNCED';r.mt=now});
+ db.chats.forEach(c=>c.sync='SYNCED')}
+const mg=(a,b)=>{const m=new Map();[...b,...a].forEach(x=>{const o=m.get(x.id);if(!o||(x.mt||0)>=(o.mt||0))m.set(x.id,x)});return [...m.values()]};
+let busy=0;
+async function syncNow(){const tag=$('cloud-sync-status');if(busy)return false;busy=1;
+ try{norm();
+  if(!navigator.onLine||!supabaseClient){tag.innerText='OFFLINE - '+qCount()+' PENDING';return false}
+  let cd=null;
+  try{const r=await Promise.race([supabaseClient.from('terminal_store').select('data').eq('user_path','cloudflare_user').maybeSingle(),new Promise((_,j)=>setTimeout(()=>j(0),6000))]);if(r.error)throw 0;cd=r.data?r.data.data:null}catch(e){tag.innerText='CLOUD UNREACHABLE - '+qCount()+' PENDING';return false}
+  if(cd&&cd.users){const L=db;
+   if((cd.epoch||0)>(L.epoch||0))db=cd;
+   else if((cd.epoch||0)===(L.epoch||0)){cd.dead=[...new Set([...(cd.dead||[]),...L.dead])];KEYS.forEach(k=>cd[k]=mg(L[k],cd[k]||[]));cd.refCtr=Math.max(cd.refCtr||0,L.refCtr);if((L.settings.mt||0)>((cd.settings||{}).mt||0))cd.settings=L.settings;db=cd}
+   norm();const D=new Set(db.dead);KEYS.forEach(k=>db[k]=db[k].filter(x=>!D.has(x.id)))}
+  const snap=JSON.stringify(db);issue();
+  const {error}=await supabaseClient.from('terminal_store').upsert({user_path:'cloudflare_user',data:db},{onConflict:'user_path'});
+  if(error){db=JSON.parse(snap);tag.innerText='PUSH FAILED - '+qCount()+' PENDING';return false}
+  recalc();localStorage.setItem(DB_KEY,JSON.stringify(db));tag.innerText='SYNCED [ONLINE DB]';refreshAll();showKeep();return true
+ }catch(e){tag.innerText='SYNC ERROR'}finally{busy=0}}
+async function done(){await new Promise(r=>setTimeout(r,80));for(let i=0;i<40&&busy;i++)await new Promise(r=>setTimeout(r,200));if(qCount()&&navigator.onLine)await syncNow()}
+backgroundSync=async function(){await syncNow()};pushDataToServerSilent=function(){syncNow()};
+save=function(){norm();recalc();localStorage.setItem(DB_KEY,JSON.stringify(db));if(session)localStorage.setItem(DB_KEY+'_SESSION',JSON.stringify(session));refreshAll();syncNow()};
+let dirLoaded=0;
+function refreshAll(){norm();recalc();syncUI();if($('tx-acc').value)autoFetch();if($('pb-acc-input').value)loadPassbookData();if(dirLoaded)loadAccountDirectory();renderAdmin();renderQueue();renderChat()}
+syncUI=function(){let cr=0,dr=0;db.ledger.forEach(l=>{if(!eff(l))return;const d=dl(l);if(d>0)cr+=d;else if(d<0)dr-=d});
+ $('val-dep').innerText=cr.toFixed(2);$('val-with').innerText=dr.toFixed(2);$('val-accs').innerText=db.accounts.length;const ce=canEdit();
+ $('body-journal').innerHTML=db.ledger.slice(0,200).map(l=>`<tr><td>${l.seq||'-'}</td><td>${l.refId||'PENDING'}</td><td>${l.date}</td><td>${l.accNo||'-'}</td><td>${l.type}</td><td>${(+l.amount).toFixed(2)}</td><td>${esc(l.operator)}</td><td>${l.void?'VOID':l.status}</td><td>${ce&&!l.void&&l.type!=='ACC_OPEN'?`<button onclick="voidTx('${l.id}')">VOID</button>`:''}</td></tr>`).join('')};
+/* ---- PIN gate (only for modify/delete/reset; adding data needs none) ---- */
+function askPin(){const p=prompt('ENTER YOUR PIN TO CONFIRM:');const u=session&&db.users.find(x=>x.id===session.id);if(!u||p!==u.pin){if(p!==null)alert('WRONG PIN.');return false}return true}
+function voidTx(id){if(!canEdit()||!askPin())return;const l=db.ledger.find(x=>x.id===id);if(l){l.void=true;l.mt=Date.now();save()}}
+function delAccs(ids){if(!canEdit()||!ids.length||!askPin()||!confirm('DELETE '+ids.length+' ACCOUNT(S) AND THEIR TRANSACTIONS?'))return;
+ ids.forEach(id=>{const a=db.accounts.find(x=>x.id===id);if(!a)return;db.dead.push(id);db.ledger.filter(l=>l.accId===id||(a.accountNumber&&l.accNo===a.accountNumber)).forEach(l=>db.dead.push(l.id))});
+ const D=new Set(db.dead);db.accounts=db.accounts.filter(x=>!D.has(x.id));db.ledger=db.ledger.filter(x=>!D.has(x.id));save()}
+function delSel(){delAccs([...document.querySelectorAll('.dsel:checked')].map(x=>x.value))}
+function editAcc(id){const a=db.accounts.find(x=>x.id===id);if(!a)return;window.editId=id;openAccountSubPanel('panel-acc-edit');(async()=>{$('edit-accno').value=a.accountNumber||'PENDING';$('edit-bal').value=(a.balance||0).toFixed(2);$('edit-name').value=await decryptData(a.holderName);$('edit-father').value=a.father||'';$('edit-phone').value=a.phone;$('edit-email').value=a.email||'';$('edit-address').value=a.address||'';$('edit-sms').value=a.sms||'OFF';$('edit-emailon').value=a.emailOn?'ON':'OFF'})()}
+async function saveAccEdit(e){e.preventDefault();const a=db.accounts.find(x=>x.id===window.editId);if(!a)return alert('SELECT A/C FROM DIRECTORY');const ph=$('edit-phone').value;if(ph.length!==10)return alert('MOBILE MUST BE 10 DIGITS');if(!canEdit()||!askPin())return;
+ a.holderName=await encryptData($('edit-name').value.trim().toUpperCase());a.father=$('edit-father').value.trim().toUpperCase();a.phone=ph;a.email=$('edit-email').value.trim();a.address=$('edit-address').value.trim().toUpperCase();a.sms=$('edit-sms').value;a.emailOn=!!(a.email&&$('edit-emailon').value==='ON');a.mt=Date.now();save();alert('ACCOUNT UPDATED EVERYWHERE')}
+function chgRole(id,r){if(!isOwner()||!askPin()){renderAdmin();return}const u=db.users.find(x=>x.id===id);if(u&&u.role!=='OWNER'){u.role=r;u.mt=Date.now()}save()}
+function delUser(id){if(!isOwner()||!askPin())return;db.dead.push(id);db.users=db.users.filter(x=>x.id!==id);save()}
+async function factoryReset(){if(!isOwner()||!askPin()||prompt('TYPE  RESET  TO WIPE ALL DATA (LOCAL + ONLINE):')!=='RESET')return;
+ const o=db.users.find(u=>u.role==='OWNER')||{id:'MASTER_OWNER',pin:'9999',role:'OWNER',status:'ACTIVE',phone:'0000000000'},st={...db.settings,mt:Date.now()};
+ db={version:13,epoch:Date.now(),users:[o],accounts:[],ledger:[],chats:[],recoverRequests:[],dead:[],customTxTypes:['CR','DR'],txRules:{CR:'ADD',DR:'SUB'},settings:st,refCtr:100000};
+ localStorage.setItem(DB_KEY,JSON.stringify(db));localStorage.removeItem('MYREQ');localStorage.removeItem('KEPT');let ok=false;
+ if(navigator.onLine&&supabaseClient){try{const r=await supabaseClient.from('terminal_store').upsert({user_path:'cloudflare_user',data:db},{onConflict:'user_path'});ok=!r.error}catch(e){}}
+ refreshAll();alert(ok?'FACTORY RESET DONE: LOCAL + ONLINE DATABASE WIPED.':'LOCAL DATA WIPED. ONLINE WIPE WILL COMPLETE AUTOMATICALLY WHEN ONLINE.')}
+/* ---- accounts / teller / passbook ---- */
+manualAccount=async function(e){e.preventDefault();const ph=$('acc-phone').value,em=$('acc-email').value.trim();if(ph.length!==10)return alert('MOBILE MUST BE 10 DIGITS');if(em&&!/^\S+@\S+\.\S+$/.test(em))return alert('INVALID EMAIL');
+ const t=new Date(),a={id:uid(),accountNumber:null,holderName:await encryptData($('acc-name').value.trim().toUpperCase()),father:$('acc-father').value.trim().toUpperCase(),phone:ph,email:em,sms:$('acc-sms').value,emailOn:!!(em&&$('acc-emailon').value==='ON'),address:$('acc-address').value.trim().toUpperCase(),balance:0,status:'APPROVED',openedAt:t.toLocaleString(),refId:null,sync:'PENDING',ts:+t,mt:+t};
+ db.accounts.push(a);db.ledger.unshift({id:uid(),seq:0,refId:null,date:t.toLocaleDateString(),time:t.toLocaleTimeString(),accId:a.id,accNo:null,type:'ACC_OPEN',amount:0,operator:session?session.id:'GUEST',narrative:'NEW ACCOUNT OPENED',mailReq:!!(em&&$('acc-emailon').value==='ON'),ip:window.myIp||'OFFLINE (IP NOT AVAILABLE)',at:new Date().toISOString(),status:'PENDING',ts:+t,mt:+t});
+ save();await done();const x=db.accounts.find(y=>y.id===a.id);alert(x.accountNumber?`ACCOUNT CREATED. A/C NO: ${x.accountNumber} | REF ID: ${x.refId}`:'SAVED OFFLINE. A/C NO & REF ID GENERATION PENDING - SYNCS AUTOMATICALLY.');e.target.reset();focusFirst(e.target)};
+loadAccountDirectory=async function(){dirLoaded=1;const ce=canEdit();let h='';
+ for(const a of db.accounts){const n=esc(await decryptData(a.holderName));h+=`<tr><td>${ce?`<input type="checkbox" class="dsel" value="${a.id}" style="width:auto"> `:''}${a.accountNumber||'PENDING'}</td><td><b>${n}</b></td><td>${esc(a.phone)}</td><td>${(a.balance||0).toFixed(2)}</td><td><button ${a.accountNumber?'':'disabled'} onclick="useSearch('${a.accountNumber}')">USE</button>${ce?` <button onclick="editAcc('${a.id}')">EDIT</button> <button class="btn-red" onclick="delAccs(['${a.id}'])">DEL</button>`:''}</td></tr>`}
+ $('body-accs').innerHTML=h||'<tr><td colspan="5" style="text-align:center">NO ACCOUNTS FOUND</td></tr>'};
+autoFetch=async function(){const q=$('tx-acc').value.replace(/\D/g,'');$('tx-acc').value=q;const a=db.accounts.find(x=>x.accountNumber===q);
+ $('tx-nm').textContent=a?await decryptData(a.holderName):(q.length===11?'NOT FOUND':'');$('tx-bl').textContent=a?'BAL: '+bal(q).toFixed(2):''};
+processTx=async function(e){e.preventDefault();const n=$('tx-acc').value.trim(),amt=Math.round(parseFloat($('tx-amt').value)*100)/100,type=$('tx-type').value;
+ if(n.length!==11)return alert('ACC NO MUST BE 11 DIGITS');if(!(amt>0))return alert('AMOUNT MUST BE MORE THAN 0');
+ if(!db.accounts.find(x=>x.accountNumber===n))return alert('ACCOUNT NOT FOUND');const dlt=calcCat(type,amt,bal(n));if(dlt===null)return alert('CATEGORY FORMULA INVALID');if(bal(n)+dlt<0)return alert('INSUFFICIENT BALANCE. AVAILABLE: '+bal(n).toFixed(2));
+ const t=new Date(),l={id:uid(),seq:0,refId:null,date:t.toLocaleDateString(),time:t.toLocaleTimeString(),accNo:n,type,amount:amt,delta:dlt,mailReq:!!((db.accounts.find(x=>x.accountNumber===n)||{}).emailOn),operator:session?session.id:'GUEST',narrative:$('tx-ref').value.trim().toUpperCase(),ip:window.myIp||'OFFLINE (IP NOT AVAILABLE)',at:new Date().toISOString(),status:'PENDING',ts:+t,mt:+t};
+ db.ledger.unshift(l);save();await done();const x=db.ledger.find(y=>y.id===l.id);
+ alert(x.status==='FAILED'?'REJECTED: '+x.why:x.refId?`TRANSACTION SUCCESSFUL. REF ID: ${x.refId} | NEW BAL: ${bal(n).toFixed(2)}`:'SAVED OFFLINE. REF ID GENERATION PENDING - SYNCS AUTOMATICALLY.');e.target.reset();$('tx-nm').textContent='';$('tx-bl').textContent='';focusFirst(e.target)};
+const stmtRows=n=>{let r=0;return db.ledger.filter(l=>l.accNo===n).sort((x,y)=>(x.ts||0)-(y.ts||0)||(x.seq||0)-(y.seq||0)).map(l=>{if(eff(l))r+=dl(l);return {l,r,st:l.void?'VOID':l.status}})};
+loadPassbookData=async function(){const n=$('pb-acc-input').value.replace(/\D/g,'');$('pb-acc-input').value=n;const a=db.accounts.find(x=>x.accountNumber===n),tb=$('body-passbook-ledger');
+ if(!a){$('pb-holder-info').value=n.length===11?'NOT FOUND':'';tb.innerHTML='<tr><td colspan="6" style="text-align:center">ENTER 11-DIGIT ACCOUNT NUMBER</td></tr>';return}
+ $('pb-holder-info').value=`${await decryptData(a.holderName)} | BAL: ${bal(n).toFixed(2)}`;
+ tb.innerHTML=stmtRows(n).map(({l,r,st})=>`<tr><td>${l.date}</td><td>${l.time}</td><td>${l.type}${st==='SYNCED'?'':' *'+st}</td><td>${esc(l.narrative)}</td><td>${(+l.amount).toFixed(2)}</td><td>${r.toFixed(2)}</td></tr>`).join('')};
+/* ---- search: acc(11)/mobile(10) auto-run at last digit ---- */
+onSearchCriteriaChange=function(){const c=$('search-criteria').value,q=$('search-query'),d=c==='accNo'||c==='mobile';q.value='';q.maxLength={accNo:11,mobile:10,ref:10,name:40}[c];q.inputMode=d?'numeric':'text';q.placeholder={accNo:'ENTER 11-DIGIT ACC NO...',mobile:'ENTER 10-DIGIT MOBILE...',ref:'ENTER REF ID (6 OR 10)...',name:'ENTER HOLDER NAME...'}[c];$('search-enter-btn-container').style.display=d?'none':'block';q.focus()};
+handleSearchAutoInput=function(e){const c=$('search-criteria').value,q=e.target;if(c==='accNo'||c==='mobile')q.value=q.value.replace(/\D/g,'');if(c==='ref')q.value=q.value.replace(/[^A-Za-z0-9]/g,'');const n=c==='accNo'?11:c==='mobile'?10:0;if(n&&q.value.length===n)runSearchForSingleRecord()};
+runSearchForSingleRecord=async function(){const c=$('search-criteria').value,q=$('search-query').value.trim(),Q=q.toUpperCase();let a=null,note='';window.lastRef=null;
+ if(c==='accNo')a=db.accounts.find(x=>x.accountNumber===q);else if(c==='mobile')a=db.accounts.find(x=>x.phone===q);
+ else if(c==='name'){for(const x of db.accounts)if((await decryptData(x.holderName)).toUpperCase().includes(Q)){a=x;break}}
+ else{const l=db.ledger.find(x=>x.refId===q);a=l?db.accounts.find(x=>x.accountNumber===l.accNo):db.accounts.find(x=>x.refId===q);if(l)window.lastRef=q;const r=db.recoverRequests.find(x=>x.refId===Q);if(!a&&r)note=r.type+' REQUEST: '+r.status}
+ window.lastFetchedAccNo=a?a.accountNumber:null;const S=(i,v)=>$(i).innerText=v;
+ if(!a){['autofill-main-identifier','autofill-balance','autofill-ref','autofill-mobile','autofill-email','autofill-ip','autofill-last-tx','autofill-opened'].forEach(i=>S(i,'---'));S('autofill-extra-desc',note||'NOT FOUND');return}
+ const lt=db.ledger.find(l=>l.accNo===a.accountNumber&&l.type!=='ACC_OPEN');
+ S('autofill-main-identifier',`${a.accountNumber} (${await decryptData(a.holderName)})`);S('autofill-balance',bal(a.accountNumber).toFixed(2));S('autofill-ref',window.lastRef||a.refId||'PENDING');S('autofill-mobile',a.phone);S('autofill-email',a.email||'---');S('autofill-ip','---');
+ S('autofill-last-tx',lt?`${lt.type} ${(+lt.amount).toFixed(2)} ${lt.date}`:'NONE');S('autofill-opened',a.openedAt||'---');S('autofill-extra-desc',a.status||'---')};
+/* ---- PDF (real, gridded, header/details/footer) ---- */
+const cl=s=>String(s??'').replace(/\u20B9/g,'Rs.').replace(/[^\x20-\x7E]/g,'');
+function makePdf(file,title,info,head,rows){if(!(window.jspdf&&window.jspdf.jsPDF)){alert('PDF ENGINE NOT LOADED (NEEDS INTERNET ONCE). USE PRINT.');return}
+ const d=new window.jspdf.jsPDF({orientation:head.length>6?'l':'p'}),W=d.internal.pageSize.getWidth(),H=d.internal.pageSize.getHeight();
+ d.setFont('courier','bold');d.setFontSize(14);d.text('LEDGER // MASTER SECURE TERMINAL',W/2,12,{align:'center'});d.setFontSize(11);d.text(cl(title),W/2,19,{align:'center'});
+ d.setFont('courier','normal');d.setFontSize(9);let y=27;info.forEach(t=>{d.text(cl(t),10,y);y+=5});
+ d.autoTable({startY:y+2,head:[head],body:rows.map(r=>r.map(cl)),theme:'grid',styles:{font:'courier',fontSize:8,lineColor:0,lineWidth:.2,textColor:0,cellPadding:1.5},headStyles:{fillColor:[220,220,220],textColor:0},margin:{left:10,right:10,bottom:14}});
+ const n=d.internal.getNumberOfPages(),st=cl(new Date().toLocaleString());for(let i=1;i<=n;i++){d.setPage(i);d.setFontSize(8);d.text('GENERATED: '+st,W-10,H-6,{align:'right'});d.text(`PAGE ${i}/${n}`,10,H-6)}
+ d.save(file)}
+const who=()=>'GENERATED BY: '+(session?session.id:'-');
+exportAuditPdf=function(){makePdf('ledger_journal.pdf','FULL TRANSACTION JOURNAL (AUDIT)',['PURPOSE: COMPLETE AUDIT OF ALL LEDGER ENTRIES','ENTRIES: '+db.ledger.length,who()],['SEQ','REF','DATE','TIME','ACC','TYPE','AMOUNT','STATUS','OPERATOR'],db.ledger.map(l=>[l.seq||'-',l.refId||'PENDING',l.date,l.time,l.accNo||'-',l.type,(+l.amount).toFixed(2),l.void?'VOID':l.status,l.operator]))};
+async function stmtPdf(n,purpose,refOnly){const a=db.accounts.find(x=>x.accountNumber===n);if(!a)return alert('ENTER A VALID ACCOUNT FIRST');let R=stmtRows(n);if(refOnly)R=R.filter(x=>x.l.refId===refOnly);
+ makePdf('statement_'+n+'.pdf',refOnly?'TRANSACTION DETAILS - REF '+refOnly:'ACCOUNT STATEMENT (PASSBOOK)',['PURPOSE: '+purpose,'A/C NO: '+n+' | HOLDER: '+await decryptData(a.holderName),'MOBILE: '+a.phone+' | CURRENT BALANCE: Rs.'+bal(n).toFixed(2),who()],['DATE','TIME','REF','TYPE','PARTICULARS','AMOUNT','BALANCE'],R.map(({l,r,st})=>[l.date,l.time,l.refId||'PENDING',l.type+(st==='SYNCED'?'':' *'+st),l.narrative,(+l.amount).toFixed(2),r.toFixed(2)]))}
+exportPassbookPdf=()=>stmtPdf($('pb-acc-input').value.trim(),'CUSTOMER PASSBOOK STATEMENT');
+exportSearchBoxPdf=()=>{const n=window.lastFetchedAccNo;if(!n)return alert('SEARCH A RECORD FIRST');stmtPdf(n,window.lastRef?'DETAILS FOR REF ID '+window.lastRef:'SEARCH RESULT - ACCOUNT STATEMENT',window.lastRef);closeSearchModal()};
+/* ---- registration / recovery (10-char ref, keep-safe notice) ---- */
+function modal(t,h){$('generic-modal-title').innerText=t;$('generic-modal-body').innerHTML=h;$('generic-centered-modal').style.cssText='display:flex;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);align-items:center;justify-content:center;padding:10px'}
+closeGenericModal=function(){$('generic-centered-modal').style.display='none'};
+function showKeep(id){const mine=JSON.parse(localStorage.MYREQ||'[]'),sh=JSON.parse(localStorage.KEPT||'[]');
+ (id?[id]:mine).forEach(i=>{const r=db.recoverRequests.find(x=>x.id===i);if(!r||sh.includes(i))return;
+  if(r.refId){sh.push(i);localStorage.KEPT=JSON.stringify(sh);modal('REQUEST SUBMITTED',`<div style="text-align:center"><div class="dim">YOUR REF ID</div><div style="font-size:1.6rem;letter-spacing:3px;margin:10px 0;color:var(--yellow)">${r.refId}</div><p>KEEP THIS REF ID SAFE. YOU NEED IT TO TRACK YOUR REQUEST. DO NOT SHARE IT WITH ANYONE.</p><div class="grid-2" style="margin-top:10px"><button class="inverted" onclick="navigator.clipboard&&navigator.clipboard.writeText('${r.refId}')">[ COPY ]</button><button class="inverted" onclick="closeGenericModal()">[ I HAVE NOTED IT ]</button></div></div>`)}
+  else if(id)modal('SAVED OFFLINE','<p>REQUEST SAVED. REF ID GENERATION IS PENDING. IT WILL BE ISSUED AUTOMATICALLY WHEN YOU ARE ONLINE AND SHOWN HERE. KEEP IT SAFE.</p><button class="inverted" onclick="closeGenericModal()">[ OK ]</button>')})}
+async function submitReq(r,e){db.recoverRequests.push(r);const m=JSON.parse(localStorage.MYREQ||'[]');m.push(r.id);localStorage.MYREQ=JSON.stringify(m);save();await done();e.target.reset();toggleLoginAction('login');showKeep(r.id)}
+handleUserRegistration=function(e){e.preventDefault();const ph=$('reg-phone').value,p=$('reg-pin').value;if(ph.length!==10)return alert('MOBILE MUST BE 10 DIGITS');if(!rule().re.test(p))return alert(rule().h);
+ submitReq({id:uid(),type:'REG',name:$('reg-name').value.trim().toUpperCase(),phone:ph,pin:p,role:$('reg-role-type').value,email:$('reg-email').value.trim(),status:'PENDING APPROVAL',refId:null,sync:'PENDING',ts:Date.now(),mt:Date.now()},e)};
+handleRecoverySubmission=function(e){e.preventDefault();const ph=$('rec-phone').value,k=$('rec-type').value,u=$('rec-uid').value.trim().toUpperCase();if(ph.length!==10)return alert('MOBILE MUST BE 10 DIGITS');if(k==='PASSWORD'&&!u)return alert('USER ID REQUIRED');
+ submitReq({id:uid(),type:'REC',kind:k,uid:u,phone:ph,details:$('rec-details').value.trim(),status:'PENDING APPROVAL',refId:null,sync:'PENDING',ts:Date.now(),mt:Date.now()},e)};
+trackPreLoginRef=function(e){const v=e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''),o=$('prelogin-ref-result');if(v.length<10){o.innerText='ENTER 10-CHARACTER REF ID...';return}
+ const r=db.recoverRequests.find(x=>x.refId===v);o.innerText=r?`TYPE: ${r.type==='REG'?'REGISTRATION':'RECOVERY'} | STATUS: ${r.status}${r.result?' | '+r.result:''}`:'NOT FOUND (CHECK ID OR TRY AGAIN WHEN ONLINE)'};
+function decideReq(id,ok){if(!isOwner()||!askPin())return;const r=db.recoverRequests.find(x=>x.id===id);if(!r)return;
+ if(!ok)r.status='REJECTED';
+ else if(r.type==='REG'){const ro=(prompt('FINAL ROLE: '+ROLES.join(' / '),r.role)||'').toUpperCase();if(!ROLES.includes(ro))return alert('INVALID ROLE');let u;do{u='USR-'+(100000+Math.floor(Math.random()*900000))}while(db.users.some(x=>x.id===u));
+  db.users.push({id:u,pin:r.pin,role:ro,status:'ACTIVE',phone:r.phone,name:r.name,mt:Date.now()});r.uid=u;r.result='APPROVED AS '+ro+'. USER ID: '+u;r.status='APPROVED';delete r.pin}
+ else{const u=db.users.find(x=>x.phone===r.phone&&(r.kind==='USER_ID'||x.id===r.uid));if(!u)return alert('NO USER MATCHES ID + MOBILE');
+  if(r.kind==='USER_ID')r.result='YOUR USER ID: '+u.id;else{const p=prompt('NEW PIN FOR '+u.id+' - '+rule().h);if(!p||!rule().re.test(p))return alert(rule().h);u.pin=p;u.mt=Date.now();r.result='PIN RESET. ASK ADMIN FOR THE NEW PIN'}r.status='APPROVED'}
+ r.mt=Date.now();save()}
+adminCreateUser=function(e){e.preventDefault();const id=$('admin-new-uid').value.trim().toUpperCase(),pin=$('admin-new-pin').value.trim(),ph=$('admin-new-phone').value;
+ if(db.users.some(x=>x.id===id))return alert('USER ID EXISTS');if(ph.length!==10)return alert('MOBILE MUST BE 10 DIGITS');if(!rule().re.test(pin))return alert(rule().h);
+ db.users.push({id,pin,role:$('admin-new-role').value,status:'ACTIVE',phone:ph,mt:Date.now()});save();alert('USER '+id+' CREATED');e.target.reset();focusFirst(e.target)};
+updatePasswordRuleSetting=function(){if(!isOwner()||!askPin()){$('admin-pwd-rule').value=rule()===PW['8N']?'8N':rule()===PW['8M']?'8M':'4N';return}db.settings.pwdRule=$('admin-pwd-rule').value;db.settings.mt=Date.now();save();applyPolicy();alert('PASSWORD RULE UPDATED: '+rule().h)};
+validatePinInput=function(i){const r=rule();if(i.id!=='inp-pin'&&r.num)i.value=i.value.replace(/\D/g,'').slice(0,r.n)};
+function applyPolicy(){const r=rule();localStorage.PWR=Object.keys(PW).find(k=>PW[k]===r);
+ ['reg-pin','admin-new-pin'].forEach(id=>{const i=$(id);i.maxLength=r.n;i.inputMode=r.num?'numeric':'text';i.placeholder=r.h.split(':')[0];const h=$('h-'+id);if(h)h.innerText=r.h});
+ $('pin-hint').innerText='RULE (SET BY OWNER): '+r.h}
+renderAdmin=async function(){const o=isOwner();$('s7-danger-btn').style.display=o?'':'none';$('admin-pwd-rule').value=Object.keys(PW).find(k=>PW[k]===rule());
+ $('body-user-sessions').innerHTML=db.users.map(u=>`<tr><td>${esc(u.id)}</td><td>${u.role}</td><td>${u.status}</td><td>${esc(u.phone||'N/A')}</td></tr>`).join('');
+ $('body-personnel-admin').innerHTML=db.users.map(u=>`<tr><td>${esc(u.id)}</td><td>${u.role==='OWNER'?'OWNER':`<select onchange="chgRole('${u.id}',this.value)">${ROLES.map(r=>`<option ${r===u.role?'selected':''}>${r}</option>`).join('')}</select>`} ${u.status}</td><td>${u.role==='OWNER'?'-':`<button onclick="delUser('${u.id}')">DEL</button>`}</td></tr>`).join('');
+ $('body-recovery-queue').innerHTML=db.recoverRequests.map(r=>`<tr><td>${r.refId||'PENDING'}</td><td>${r.type} ${esc(r.uid||r.name||'')}<br><span class="dim">${r.status}${r.type==='REG'?' | REQ: '+r.role+(r.emailVerified?' | EMAIL VERIFIED':' | EMAIL NOT VERIFIED'):''}</span></td><td>${esc(r.phone)}</td><td>${o&&r.status==='PENDING APPROVAL'&&r.refId?`<button class="btn-green" onclick="decideReq('${r.id}',1)">OK</button> <button class="btn-red" onclick="decideReq('${r.id}',0)">NO</button>`:''}</td></tr>`).join('')||'<tr><td colspan="4">NO REQUESTS</td></tr>'};
+/* ---- tracker, ref lookup ---- */
+async function renderQueue(){if(!$('panel-queue').offsetParent)return;const s=$('q-s').value.trim().toUpperCase(),f=$('q-st').value,nm={};for(const a of db.accounts)nm[a.accountNumber||a.id]=await decryptData(a.holderName);let R=[];
+ db.accounts.forEach(a=>R.push(['ACCOUNT',a.id,a.refId,(a.accountNumber||'-')+' '+nm[a.accountNumber||a.id]+' '+a.phone,'',a.accountNumber?'SYNCED':'PENDING']));
+ db.ledger.forEach(l=>R.push(['TX '+l.type,l.id,l.refId,(l.accNo||'-')+' '+(nm[l.accNo]||''),(+l.amount).toFixed(2),l.void?'VOID':l.status+(l.why?' ('+l.why+')':'')]));
+ db.recoverRequests.forEach(r=>R.push([r.type,r.id,r.refId,(r.name||r.uid||'')+' '+r.phone,'',r.refId?'SYNCED':'PENDING']));
+ R=R.filter(r=>(!f||r[5].startsWith(f))&&(!s||(r[1].slice(0,6)+' '+(r[2]||'')+' '+r[3]).toUpperCase().includes(s))).sort((a,b)=>(a[5]==='SYNCED')-(b[5]==='SYNCED')).slice(0,300);
+ $('body-queue').innerHTML=R.map(r=>`<tr><td>${r[0]}</td><td>${r[1].slice(0,6).toUpperCase()}</td><td>${r[2]||'PENDING'}</td><td>${esc(r[3])}</td><td>${r[4]}</td><td>${esc(r[5])}</td></tr>`).join('')||'<tr><td colspan="6">NOTHING FOUND</td></tr>'}
+function refLook(){const q=$('rl-q').value=$('rl-q').value.toUpperCase().replace(/[^A-Z0-9]/g,''),o=$('rl-out');if(q.length<6){o.innerText='ENTER 6-DIGIT OR 10-CHAR REF ID';return}
+ const l=db.ledger.find(x=>x.refId===q),a=db.accounts.find(x=>x.refId===q),r=db.recoverRequests.find(x=>x.refId===q);
+ o.innerText=l?`TX ${l.type} | ACC ${l.accNo} | AMT ${(+l.amount).toFixed(2)} | ${l.date} ${l.time} | ${l.narrative} | BY ${l.operator} | ${l.void?'VOID':l.status}`:a?`ACCOUNT ${a.accountNumber} | PHONE ${a.phone} | OPENED ${a.openedAt}`:r?`${r.type} REQUEST | ${r.status} | ${r.name||r.uid||''} ${r.phone} ${r.result||''}`:'NOT FOUND'}
+/* ---- chat (by acc no 11 / mobile 10 / name) ---- */
+let chAcc=null;
+function chMode(){const m=$('ch-mode').value,t=$('ch-target');t.value='';chAcc=null;$('ch-label').value=m==='STAFF'?'ALL STAFF':'';t.style.display=m==='STAFF'?'none':'';t.maxLength=m==='acc'?11:m==='mob'?10:40;t.inputMode=m==='name'?'text':'numeric';t.placeholder=m==='acc'?'11-DIGIT ACC NO':m==='mob'?'10-DIGIT MOBILE':'HOLDER NAME';renderChat();if(m!=='STAFF')t.focus()}
+async function chTarget(){const m=$('ch-mode').value,t=$('ch-target');if(m!=='name')t.value=t.value.replace(/\D/g,'');const v=t.value.trim().toUpperCase();let a=null;
+ if(m==='acc'&&v.length===11)a=db.accounts.find(x=>x.accountNumber===v);if(m==='mob'&&v.length===10)a=db.accounts.find(x=>x.phone===v);
+ if(m==='name'&&v.length>1)for(const x of db.accounts)if((await decryptData(x.holderName)).toUpperCase().includes(v)){a=x;break}
+ chAcc=a?a.accountNumber:null;$('ch-label').value=a?`${a.accountNumber} ${await decryptData(a.holderName)}`:'NOT FOUND';renderChat()}
+sendChatMessage=async function(e){e.preventDefault();const i=$('chat-input-msg'),m=$('ch-mode').value;if(!i.value.trim()||!session)return;if(m!=='STAFF'&&!chAcc)return alert('SELECT A VALID RECIPIENT FIRST');
+ db.chats.push({id:uid(),sender:session.id,to:m==='STAFF'?'STAFF':chAcc,text:await encryptData(i.value.trim()),time:new Date().toLocaleTimeString(),ts:Date.now(),mt:Date.now(),sync:'PENDING'});i.value='';save();i.focus()};
+renderChat=async function(){const c=$('chat-messages-container');if(!c)return;const to=$('ch-mode').value==='STAFF'?'STAFF':chAcc,seen=+(localStorage.CHSEEN||0);
+ const un=db.chats.filter(x=>x.sender!==(session&&session.id)&&x.ts>seen).length;$('msg-badge').innerText=un;
+ if(!$('page-chat').offsetParent)return;localStorage.CHSEEN=Date.now();$('msg-badge').innerText=0;
+ const L=to?db.chats.filter(x=>x.to===to):[];let h='';for(const x of L)h+=`<div style="background:#111;padding:6px;border:1px solid var(--dim)"><b>${esc(x.sender)}</b> @ ${esc(x.time)}${x.sync==='PENDING'?' <span class="dim">[PENDING]</span>':''}<br>${esc(await decryptData(x.text))}</div>`;
+ c.innerHTML=h||'<div style="text-align:center;color:var(--dim)">NO MESSAGES</div>';c.scrollTop=c.scrollHeight};
+/* ---- fast entry: auto-jump on complete field, Enter to next, focus first box ---- */
+function nextF(t){const sc=t.closest('form')||t.closest('.box')||document,L=[...sc.querySelectorAll('input,select,textarea,button[type=submit]')].filter(x=>!x.readOnly&&!x.disabled&&x.offsetParent&&!['hidden','checkbox','file'].includes(x.type));return L[L.indexOf(t)+1]}
+function focusFirst(c){setTimeout(()=>{for(const x of(c||document).querySelectorAll('input,select,textarea'))if(x.offsetParent&&!x.readOnly&&!x.disabled&&!['hidden','checkbox','file'].includes(x.type)&&!x.value){x.focus();return}},60)}
+document.addEventListener('input',e=>{const t=e.target;if(t.matches('input[maxlength]')&&!['search-query','ch-target'].includes(t.id)&&t.maxLength>0&&t.value.length>=t.maxLength){const n=nextF(t);if(n)n.focus()}});
+document.addEventListener('change',e=>{if(e.target.tagName==='SELECT'&&e.target.closest('form')){const n=nextF(e.target);if(n)n.focus()}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input,select')&&!['search-query','ch-target','chat-input-msg','q-s','rl-q'].includes(e.target.id)){const n=nextF(e.target);if(n&&n.type!=='submit'){e.preventDefault();n.focus()}}});
+const wr=(n,f)=>{const o=window[n];window[n]=function(){const r=o.apply(this,arguments);focusFirst(f.apply(null,arguments));return r}};
+wr('showPage',id=>$(id));wr('openAccountSubPanel',id=>$(id));wr('openAdminSubPanel',id=>$(id));wr('openSearchModal',()=>$('search-modal'));wr('openStatusPopupModal',()=>$('status-popup-modal'));wr('toggleLoginAction',m=>$({login:'login-box',reg:'reg-box',recover:'recover-box'}[m]));
+{const o=showPage;showPage=function(id){o(id);if(id==='page-chat')renderChat();if(id==='page-section-7')renderAdmin()}}
+{const o=openStatusPopupModal;openStatusPopupModal=function(){o();syncNow()}}
+/* ---- inject UI ---- */
+$('search-criteria').insertAdjacentHTML('afterbegin','');$('edit-father').required=false;
+$('tx-fetch').style.display='none';$('tx-fetch').insertAdjacentHTML('afterend','<div style="display:grid;grid-template-columns:1fr auto;gap:6px;min-width:0"><div style="border:1px dashed var(--dim);padding:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0"><span id="tx-nm"></span></div><div style="border:1px dashed var(--dim);padding:6px;white-space:nowrap;color:var(--yellow);font-weight:bold"><span id="tx-bl"></span></div></div>');
+$('admin-pwd-rule').innerHTML='<option value="4N">4-DIGIT NUMBER</option><option value="8N">8-DIGIT NUMBER</option><option value="8M">8 CHAR: LETTER+NUMBER+CAPITAL+SPECIAL</option>';
+$('body-journal').closest('table').querySelector('thead tr').innerHTML='<th>SEQ</th><th>REF</th><th>DATE</th><th>ACC</th><th>TYP</th><th>AMT</th><th>OPERATOR</th><th>STATUS</th><th></th>';
+$('reg-pin').insertAdjacentHTML('afterend','<div id="h-reg-pin" style="font-size:.6rem;color:var(--yellow)"></div>');$('admin-new-pin').insertAdjacentHTML('afterend','<div id="h-admin-new-pin" style="font-size:.6rem;color:var(--yellow)"></div>');
+$('mid-action-bar').insertAdjacentHTML('beforeend','<button onclick="syncBtn(this)">⟳ SYNC NOW</button>');
+document.querySelector('#panel-acc-directory .box-title div').insertAdjacentHTML('afterbegin','<button class="btn-red" onclick="delSel()" style="padding:2px 6px;font-size:.65rem">[ DELETE SELECTED ]</button> ');
+$('sliding-content-container').insertAdjacentHTML('beforeend','<div class="view-page" id="page-chat"><div class="box"><div class="box-title"><span>MESSAGES</span></div><div class="grid-3"><select id="ch-mode" onchange="chMode()"><option value="STAFF">STAFF CHANNEL</option><option value="acc">BY ACC NO (11)</option><option value="mob">BY MOBILE (10)</option><option value="name">BY NAME</option></select><input id="ch-target" oninput="chTarget()" style="display:none"><input id="ch-label" readonly placeholder="RECIPIENT" value="ALL STAFF"></div><div id="chat-messages-container" style="max-height:45vh;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin:8px 0"></div><form onsubmit="sendChatMessage(event)" style="display:flex;gap:6px"><input id="chat-input-msg" maxlength="500" placeholder="MESSAGE" autocomplete="off"><button class="inverted" type="submit" style="width:90px">SEND</button></form></div></div>');
+$('section-7-user-profile').insertAdjacentHTML('afterend',`<div id="s7-common" style="margin-top:8px"><div class="admin-menu-grid"><button class="inverted" onclick="openAdminSubPanel('panel-reflook')">[7] REF ID LOOKUP</button><button class="inverted" onclick="openAdminSubPanel('panel-queue')">[8] OFFLINE / SYNC TRACKER</button><button class="btn-red" id="s7-danger-btn" onclick="openAdminSubPanel('panel-danger')">[9] FACTORY RESET</button></div>
+<div id="panel-reflook" class="admin-sub-panel"><div class="box-title"><span>REF ID LOOKUP</span><button onclick="closeAdminSubPanels()" style="font-size:.6rem;padding:2px 6px">[CLOSE]</button></div><input id="rl-q" maxlength="10" placeholder="6-DIGIT OR 10-CHAR REF ID" oninput="refLook()"><div id="rl-out" style="margin-top:8px;padding:6px;border:1px dashed var(--dim);min-height:40px"></div></div>
+<div id="panel-queue" class="admin-sub-panel"><div class="box-title"><span>OFFLINE / SYNC TRACKER</span><button onclick="closeAdminSubPanels()" style="font-size:.6rem;padding:2px 6px">[CLOSE]</button></div><div class="grid-3"><input id="q-s" placeholder="NAME / ACC / MOBILE / REF / TMP ID" oninput="renderQueue()"><select id="q-st" onchange="renderQueue()"><option value="">ALL</option><option>PENDING</option><option>FAILED</option><option>SYNCED</option></select><button class="btn-green" onclick="syncBtn(this)">[ SYNC NOW ]</button></div><div class="table-container"><table><thead><tr><th>KIND</th><th>TMP ID</th><th>REF</th><th>ACC / NAME</th><th>AMT</th><th>STATUS</th></tr></thead><tbody id="body-queue"></tbody></table></div></div>
+<div id="panel-danger" class="admin-sub-panel"><div class="box-title"><span>FACTORY RESET (OWNER)</span><button onclick="closeAdminSubPanels()" style="font-size:.6rem;padding:2px 6px">[CLOSE]</button></div><p class="dim" style="font-size:.75rem;margin-bottom:8px">WIPES ALL ACCOUNTS, TRANSACTIONS, CHATS, REQUESTS AND OTHER USERS - LOCAL AND ONLINE. NEEDS YOUR PIN + TYPED CONFIRMATION.</p><button class="btn-red" style="width:100%;padding:10px" onclick="factoryReset()">[ WIPE ENTIRE SYSTEM ]</button></div></div>`);
+const net=()=>{const n=$('net-status-tag');n.innerText=navigator.onLine?'ONLINE':'OFFLINE';n.classList.remove('blink')};
+addEventListener('online',()=>{net();syncNow()});addEventListener('offline',net);net();applyPolicy();focusFirst($('login-box'));
+
+</script>
+<script>
+/* ===== PATCH v14 ===== */
+KEYS.push('logins','contacts');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+/* ---- IP ---- */
+async function getIp(){if(window.myIp&&!/OFFLINE/.test(window.myIp))return window.myIp;try{const r=await Promise.race([fetch('https://api.ipify.org?format=json'),new Promise((_,j)=>setTimeout(j,3000))]);window.myIp=(await r.json()).ip}catch(e){window.myIp='OFFLINE (IP NOT AVAILABLE)'}return window.myIp}
+getIp();setInterval(getIp,60000);
+/* ---- permissions ---- */
+const FEAT={teller:'TELLER',passbook:'PASSBOOK',open:'OPEN ACCOUNT',directory:'DIRECTORY',search:'SEARCH',chat:'CHAT',audit:'AUDIT / JOURNAL',pdf:'PDF / PRINT',tracker:'SYNC TRACKER',reflook:'REF LOOKUP',imp:'VCF / CONTACT IMPORT',edit:'EDIT / DELETE DATA',users:'USER MANAGEMENT',approve:'APPROVE REQUESTS'};
+const DEF={ADMIN:Object.keys(FEAT).filter(k=>k!=='users'),OPERATOR:['teller','open','passbook','search','chat','reflook','tracker','pdf'],SUBSCRIBER_TENANT:['search','passbook','chat'],GENERAL_USER:['search','passbook','chat']};
+function can(f){if(!session)return false;if(session.role==='OWNER')return true;const u=db.users.find(x=>x.id===session.id);return (u&&u.perms?u.perms:DEF[session.role]||[]).includes(f)}
+{const o=showPage,M={'page-teller':'teller','page-passbook':'passbook','page-chat':'chat'};showPage=function(id){if(M[id]&&!can(M[id]))return alert('NOT ALLOWED FOR YOUR ROLE');return o.apply(this,arguments)}}
+{const o=openAccountSubPanel,M={'panel-acc-import':'imp','panel-acc-directory':'directory','panel-acc-edit':'edit'};openAccountSubPanel=function(id){if(M[id]&&!can(M[id]))return alert('NOT ALLOWED FOR YOUR ROLE');return o.apply(this,arguments)}}
+function permUser(id){if(!isOwner())return;const u=db.users.find(x=>x.id===id);if(!u)return;const cur=u.perms||DEF[u.role]||[];window.pu=id;
+ modal('PERMISSIONS: '+id,`<div style="text-align:left;max-height:50vh;overflow:auto">${Object.entries(FEAT).map(([k,v])=>`<label style="display:block;padding:3px"><input type="checkbox" class="pk" value="${k}" ${cur.includes(k)?'checked':''} style="width:auto"> ${v}</label>`).join('')}</div><div class="grid-2" style="margin-top:8px"><button class="inverted" onclick="savePerm(0)">[ SAVE ]</button><button class="inverted" onclick="savePerm(1)">[ ROLE DEFAULT ]</button></div>`)}
+function savePerm(r){if(!askPin())return;const u=db.users.find(x=>x.id===window.pu);if(!u)return;if(r)delete u.perms;else u.perms=[...document.querySelectorAll('.pk:checked')].map(x=>x.value);u.mt=Date.now();closeGenericModal();save()}
+function lockUser(id){if(!isOwner())return;const u=db.users.find(x=>x.id===id);if(!u||u.role==='OWNER')return;let n=0;
+ if(!(u.lockUntil>Date.now())){const m=prompt('LOCK FOR HOW MANY MINUTES?\n15 / 60 / 1440 (=1 DAY) / 99999 = UNTIL UNLOCKED');if(m===null)return;n=parseInt(m);if(!(n>0))return alert('INVALID')}
+ if(!askPin())return;u.lockUntil=n?(n>=99999?9e15:Date.now()+n*60000):0;u.mt=Date.now();save()}
+function editUser(id){if(!isOwner())return;const u=db.users.find(x=>x.id===id);if(!u)return;const ph=prompt('MOBILE (10 DIGITS):',u.phone||'');if(ph===null)return;if(!/^\d{10}$/.test(ph))return alert('MOBILE MUST BE 10 DIGITS');
+ const p=prompt('NEW PIN (BLANK = KEEP). '+rule().h);if(p&&!rule().re.test(p))return alert(rule().h);if(!askPin())return;u.phone=ph;if(p)u.pin=p;u.mt=Date.now();save()}
+{const o=handleLogon;let last=null;handleLogon=async function(e){const id=($('inp-uid').value||'').trim().toUpperCase(),u=db.users.find(x=>String(x.id).toUpperCase()===id);
+ if(u&&u.lockUntil>Date.now()){e.preventDefault();return alert('USER LOCKED. '+(u.lockUntil>=9e15?'UNTIL OWNER UNLOCKS.':'TRY AFTER '+new Date(u.lockUntil).toLocaleString()))}
+ await o(e);if(session&&session.id!==last){last=session.id;await getIp();db.logins.unshift({id:uid(),user:session.id,role:session.role,ip:window.myIp,at:new Date().toISOString(),mt:Date.now()});db.logins=db.logins.slice(0,500);save()}}}
+{const o=renderAdmin;renderAdmin=async function(){await o();const ow=isOwner(),now=Date.now();
+ $('body-personnel-admin').innerHTML=db.users.map(u=>{const lk=u.lockUntil>now;return `<tr><td>${esc(u.id)}${lk?' [LOCKED]':''}<br><span class="dim">${esc(u.phone||'')}</span></td><td>${u.role==='OWNER'||!ow?u.role:`<select onchange="chgRole('${u.id}',this.value)">${ROLES.map(r=>`<option ${r===u.role?'selected':''}>${r}</option>`).join('')}</select>`}<br><span class="dim">${lk?(u.lockUntil>=9e15?'LOCKED':'TILL '+new Date(u.lockUntil).toLocaleString()):u.status}</span></td><td>${u.role==='OWNER'||!ow?'-':`<button onclick="permUser('${u.id}')">PERMS</button> <button onclick="lockUser('${u.id}')">${lk?'UNLOCK':'LOCK'}</button> <button onclick="editUser('${u.id}')">EDIT</button> <button onclick="delUser('${u.id}')">DEL</button>`}</td></tr>`}).join('');
+ if(ow)$('log-out').innerHTML='<b>LOGIN IP LOG</b><div class="table-container"><table><thead><tr><th>TIME</th><th>USER</th><th>IP</th></tr></thead><tbody>'+db.logins.slice(0,60).map(l=>`<tr><td>${esc(l.at.replace('T',' ').slice(0,19))}</td><td>${esc(l.user)}</td><td>${esc(l.ip)}</td></tr>`).join('')+'</tbody></table></div><b>TRANSACTION IP LOG</b><div class="table-container"><table><thead><tr><th>TIME</th><th>REF</th><th>ACC</th><th>IP</th></tr></thead><tbody>'+db.ledger.filter(l=>l.ip).slice(0,60).map(l=>`<tr><td>${esc((l.at||'').replace('T',' ').slice(0,19))}</td><td>${l.refId||'PENDING'}</td><td>${l.accNo||'-'}</td><td>${esc(l.ip)}</td></tr>`).join('')+'</tbody></table></div>'}}
+function wipeCat(){if(!isOwner())return;const c=$('dm-cat').value;if(!askPin()||prompt('TYPE  DELETE  TO ERASE ALL: '+c.toUpperCase())!=='DELETE')return;const keep=x=>c==='users'&&x.role==='OWNER';
+ db[c].filter(x=>!keep(x)).forEach(x=>db.dead.push(x.id));if(c==='accounts'){db.ledger.forEach(l=>db.dead.push(l.id));db.ledger=[]}db[c]=db[c].filter(keep);save()}
+function delRef(){if(!isOwner())return;const r=$('dm-ref').value.trim();const l=db.ledger.find(x=>x.refId===r);if(!l)return alert('REF NOT FOUND IN TRANSACTIONS');if(!askPin())return;db.dead.push(l.id);db.ledger=db.ledger.filter(x=>x.id!==l.id);save();$('dm-ref').value=''}
+/* ---- factory reset (blocks sync, verifies online, clears all storage) ---- */
+factoryReset=async function(){if(!isOwner()||!askPin()||prompt('TYPE  RESET  TO WIPE ALL DATA (LOCAL + ONLINE):')!=='RESET')return;
+ for(let i=0;i<50&&busy;i++)await sleep(200);busy=1;
+ try{const o=db.users.find(u=>u.role==='OWNER')||{id:'MASTER_OWNER',pin:'9999',role:'OWNER',status:'ACTIVE',phone:'0000000000'},pw=localStorage.PWR,ss=localStorage.getItem(DB_KEY+'_SESSION');
+  db={version:13,epoch:Date.now(),users:[{...o,lockUntil:0,perms:undefined}],accounts:[],ledger:[],chats:[],recoverRequests:[],logins:[],contacts:[],dead:[],customTxTypes:['CR','DR'],txRules:{CR:'ADD',DR:'SUB'},settings:{pwdRule:db.settings.pwdRule,mt:Date.now()},refCtr:100000};
+  let ok=false;if(navigator.onLine&&supabaseClient){try{const r=await supabaseClient.from('terminal_store').upsert({user_path:'cloudflare_user',data:db},{onConflict:'user_path'});if(!r.error){const v=await supabaseClient.from('terminal_store').select('data').eq('user_path','cloudflare_user').maybeSingle(),d=v.data&&v.data.data;ok=!!(d&&d.epoch===db.epoch&&!d.accounts.length&&!d.ledger.length)}}catch(e){}}
+  localStorage.clear();if(pw)localStorage.PWR=pw;if(ss)localStorage.setItem(DB_KEY+'_SESSION',ss);localStorage.setItem(DB_KEY,JSON.stringify(db));
+  alert(ok?'FACTORY RESET COMPLETE: LOCAL + ONLINE DATABASE CONFIRMED EMPTY.':'LOCAL DATA WIPED. ONLINE WIPE COMPLETES AUTOMATICALLY WHEN ONLINE.');location.reload()}finally{busy=0}};
+async function syncBtn(b){const t=b.innerText;b.disabled=true;b.innerText='SYNCING... PLEASE WAIT';b.style.opacity=.7;for(let i=0;i<60&&busy;i++)await sleep(200);const ok=await syncNow();b.innerText=ok?'SYNC COMPLETE':'SYNC FAILED';setTimeout(()=>{b.innerText=t;b.disabled=false;b.style.opacity=1},1800)}
+/* ---- random unique 6-digit refs ---- */
+issue=function(){const now=Date.now(),used=new Set([...db.ledger,...db.accounts].map(x=>x.refId).filter(Boolean));
+ const r6=acc=>{let s;const g=()=>String(100000+Math.floor(Math.random()*900000));if(used.size>=900000){do{s=g()}while(db.ledger.some(l=>l.accNo===acc&&l.refId===s))}else{do{s=g()}while(used.has(s));used.add(s)}return s};
+ db.accounts.filter(a=>!a.accountNumber).sort((a,b)=>a.ts-b.ts).forEach(a=>{a.accountNumber=getSerial();a.sync='SYNCED';a.mt=now;db.ledger.forEach(l=>{if(l.accId===a.id)l.accNo=a.accountNumber})});
+ let seq=db.ledger.reduce((m,l)=>Math.max(m,l.seq||0),0);
+ db.ledger.filter(l=>l.status==='PENDING').sort((a,b)=>a.ts-b.ts).forEach(l=>{l.refId=r6(l.accNo);l.seq=++seq;l.mt=now;if(dl(l)<0&&bal(l.accNo)<0){l.status='FAILED';l.why='INSUFFICIENT BALANCE AT SYNC'}else l.status='SYNCED';if(l.type==='ACC_OPEN'){const a=db.accounts.find(x=>x.id===l.accId);if(a)a.refId=l.refId}});
+ db.recoverRequests.filter(r=>!r.refId).forEach(r=>{r.refId=long();r.sync='SYNCED';r.mt=now});db.chats.forEach(c=>c.sync='SYNCED')};
+/* ---- search: REF + ACC/MOBILE ---- */
+$('search-criteria').insertAdjacentHTML('beforeend','<option value="refacc">REF + ACC / MOBILE</option>');
+$('search-query').insertAdjacentHTML('afterend','<input id="search-query2" style="display:none;margin-top:4px" inputmode="numeric" maxlength="11" placeholder="ACC (11) OR MOBILE (10)" oninput="q2in(this)">');
+function q2in(i){i.value=i.value.replace(/\D/g,'');if(i.value.length===10||i.value.length===11)runSearchForSingleRecord()}
+{const o=onSearchCriteriaChange;onSearchCriteriaChange=function(){o();const r=$('search-criteria').value==='refacc',q=$('search-query');$('search-query2').style.display=r?'':'none';$('search-query2').value='';if(r){q.maxLength=10;q.inputMode='text';q.placeholder='ENTER REF ID...'}}}
+runSearchForSingleRecord=async function(){const c=$('search-criteria').value,q=$('search-query').value.trim(),Q=q.toUpperCase(),q2=($('search-query2').value||'').trim();let a=null,note='';window.lastRef=null;
+ if(c==='accNo')a=db.accounts.find(x=>x.accountNumber===q);else if(c==='mobile')a=db.accounts.find(x=>x.phone===q);
+ else if(c==='name'){for(const x of db.accounts)if((await decryptData(x.holderName)).toUpperCase().includes(Q)){a=x;break}}
+ else{const L=db.ledger.filter(x=>x.refId===q);let A=[...new Set(L.map(l=>db.accounts.find(x=>x.accountNumber===l.accNo)).filter(Boolean))];if(!L.length)A=db.accounts.filter(x=>x.refId===q);
+  if(c==='refacc'){if(!q2)note='ENTER ACC / MOBILE IN THE 2ND BOX';A=A.filter(x=>x.accountNumber===q2||x.phone===q2)}
+  if(A.length>1)note='REF SHARED BY '+A.length+' ACCOUNTS - USE REF + ACC/MOBILE';else if(A.length===1){a=A[0];window.lastRef=q}else if(!L.length){const r=db.recoverRequests.find(x=>x.refId===Q);if(r)note=r.type+' REQUEST: '+r.status}}
+ window.lastFetchedAccNo=a?a.accountNumber:null;const S=(i,v)=>$(i).innerText=v;
+ if(!a){['autofill-main-identifier','autofill-balance','autofill-ref','autofill-mobile','autofill-email','autofill-ip','autofill-last-tx','autofill-opened'].forEach(i=>S(i,'---'));S('autofill-extra-desc',note||'NOT FOUND');return}
+ const lt=db.ledger.find(l=>l.accNo===a.accountNumber&&l.type!=='ACC_OPEN');
+ S('autofill-main-identifier',`${a.accountNumber} (${await decryptData(a.holderName)})`);S('autofill-balance',bal(a.accountNumber).toFixed(2));S('autofill-ref',window.lastRef||a.refId||'PENDING');S('autofill-mobile',a.phone);S('autofill-email',a.email||'---');S('autofill-ip',lt&&lt.ip||'---');
+ S('autofill-last-tx',lt?`${lt.type} ${(+lt.amount).toFixed(2)} ${lt.date}`:'NONE');S('autofill-opened',a.openedAt||'---');S('autofill-extra-desc',a.status||'---')};
+/* ---- own PDF engine (offline, no library) + print with same layout + column options ---- */
+function pdfBuild(title,info,head,rows){const land=head.length>6,PW=land?842:595,PH=land?595:842,M=28,cw=head.map((h,i)=>Math.min(28,rows.reduce((m,r)=>Math.max(m,String(r[i]).length),h.length))+1);
+ const fs=Math.min(8,(PW-2*M)/cw.reduce((a,b)=>a+b,0)/.6),ch=fs*.6,lh=fs+3,X=[M];cw.forEach((c,i)=>X.push(X[i]+c*ch));const pages=[];let ops,y;
+ const e2=s=>cl(s).replace(/[\\()]/g,'\\$&'),T=(x,yy,s,b,sz)=>ops.push(`BT /F${b?2:1} ${sz||fs} Tf ${x.toFixed(1)} ${yy.toFixed(1)} Td (${e2(s)}) Tj ET`),wrap=(s,n)=>{s=cl(s);const o=[];for(let i=0;i<Math.max(1,s.length);i+=n)o.push(s.slice(i,i+n));return o};
+ const page=c=>{ops=[];pages.push(ops);ops.push('0.5 w');y=PH-M;if(c)row(head,1)};
+ const row=(cells,b)=>{const L=cells.map((c,i)=>wrap(c,cw[i]-1)),n=Math.max(...L.map(l=>l.length)),h=n*lh+3;if(y-h<M+16)page(1);const R=X[X.length-1];
+  ops.push(`${M} ${y.toFixed(1)} m ${R.toFixed(1)} ${y.toFixed(1)} l S`);L.forEach((l,i)=>l.forEach((t,k)=>T(X[i]+2,y-lh*(k+1)+1,t,b)));ops.push(`${M} ${(y-h).toFixed(1)} m ${R.toFixed(1)} ${(y-h).toFixed(1)} l S`);X.forEach(x=>ops.push(`${x.toFixed(1)} ${y.toFixed(1)} m ${x.toFixed(1)} ${(y-h).toFixed(1)} l S`));y-=h};
+ page();T((PW-260)/2,y-10,'LEDGER // MASTER SECURE TERMINAL',1,14);y-=28;T(M,y,title,1,10);y-=14;info.forEach(t=>{T(M,y,t,0,8);y-=11});y-=6;row(head,1);rows.forEach(r=>row(r));
+ const st='GENERATED: '+cl(new Date().toLocaleString());pages.forEach((p,i)=>{ops=p;T(PW-M-st.length*4.8,14,st,0,8);T(M,14,`PAGE ${i+1}/${pages.length}`,0,8)});
+ const O=[];O[1]='<</Type/Catalog/Pages 2 0 R>>';O[2]=`<</Type/Pages/Kids[${pages.map((_,i)=>(5+i*2)+' 0 R').join(' ')}]/Count ${pages.length}>>`;O[3]='<</Type/Font/Subtype/Type1/BaseFont/Courier>>';O[4]='<</Type/Font/Subtype/Type1/BaseFont/Courier-Bold>>';
+ pages.forEach((p,i)=>{const s=p.join('\n');O[5+i*2]=`<</Type/Page/Parent 2 0 R/MediaBox[0 0 ${PW} ${PH}]/Resources<</Font<</F1 3 0 R/F2 4 0 R>>>>/Contents ${6+i*2} 0 R>>`;O[6+i*2]=`<</Length ${s.length}>>\nstream\n${s}\nendstream`});
+ let out='%PDF-1.4\n';const off=[];for(let i=1;i<O.length;i++){off[i]=out.length;out+=`${i} 0 obj\n${O[i]}\nendobj\n`}const xr=out.length;
+ out+=`xref\n0 ${O.length}\n0000000000 65535 f \n`+off.slice(1).map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<</Size ${O.length}/Root 1 0 R>>\nstartxref\n${xr}\n%%EOF`;return new Blob([out],{type:'application/pdf'})}
+function printDoc(title,info,head,rows){const f=document.createElement('iframe');f.style.cssText='position:fixed;width:0;height:0;border:0';document.body.appendChild(f);const d=f.contentWindow.document;d.open();
+ d.write(`<html><head><style>body{font:11px monospace;margin:14mm 10mm 16mm}h2,h3{text-align:center;margin:2px}table{width:100%;border-collapse:collapse;margin-top:8px}td,th{border:1px solid #000;padding:2px 4px;text-align:left;word-break:break-all}th{background:#ddd}thead{display:table-header-group}.ft{position:fixed;bottom:4mm;right:10mm;font-size:9px}</style></head><body><h2>LEDGER // MASTER SECURE TERMINAL</h2><h3>${esc(cl(title))}</h3>${info.map(t=>`<div>${esc(cl(t))}</div>`).join('')}<table><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(cl(c))}</td>`).join('')}</tr>`).join('')}</tbody></table><div class="ft">GENERATED: ${esc(cl(new Date().toLocaleString()))}</div></body></html>`);d.close();
+ setTimeout(()=>{f.contentWindow.focus();f.contentWindow.print();setTimeout(()=>f.remove(),4000)},300)}
+makePdf=function(file,title,info,head,rows,mode){window.__d={file,title,info,head,rows,mode:mode==='print'?'print':'pdf'};
+ modal('OUTPUT OPTIONS - '+(mode==='print'?'PRINT':'PDF'),`<div style="text-align:left"><p class="dim" style="font-size:.7rem">UNTICKED ITEMS ARE LEFT OUT.</p><label style="display:block"><input type="checkbox" id="cx-info" checked style="width:auto"> DETAILS BLOCK (ACCOUNT / PURPOSE)</label>${head.map((h,i)=>`<label style="display:block"><input type="checkbox" class="cx" value="${i}" checked style="width:auto"> ${esc(h)}</label>`).join('')}</div><button class="inverted" style="width:100%;margin-top:8px" onclick="docGo()">[ ${mode==='print'?'PRINT':'DOWNLOAD PDF'} ]</button>`)};
+function docGo(){const d=window.__d,ix=[...document.querySelectorAll('.cx:checked')].map(x=>+x.value);if(!ix.length)return alert('TICK AT LEAST ONE COLUMN');const h=ix.map(i=>d.head[i]),r=d.rows.map(x=>ix.map(i=>x[i])),inf=$('cx-info').checked?d.info:[];closeGenericModal();
+ if(d.mode==='print')printDoc(d.title,inf,h,r);else{const a=document.createElement('a');a.href=URL.createObjectURL(pdfBuild(d.title,inf,h,r));a.download=d.file;document.body.appendChild(a);a.click();a.remove()}}
+const atOf=l=>l.at?l.at.replace('T',' ').slice(0,19):l.date+' '+l.time;
+exportAuditPdf=function(m){makePdf('ledger_journal.pdf','FULL TRANSACTION JOURNAL (AUDIT)',['PURPOSE: COMPLETE AUDIT OF ALL LEDGER ENTRIES','ENTRIES: '+db.ledger.length,who()],['SEQ','REF','DATE','TIME','IP','ACC','TYPE','AMOUNT','STATUS','OPERATOR'],db.ledger.map(l=>[l.seq||'-',l.refId||'PENDING',l.date,l.time,l.ip||'-',l.accNo||'-',l.type,(+l.amount).toFixed(2),l.void?'VOID':l.status,l.operator]),m)};
+stmtPdf=async function(n,purpose,refOnly,m){const a=db.accounts.find(x=>x.accountNumber===n);if(!a)return alert('ENTER A VALID ACCOUNT FIRST');let R=stmtRows(n);if(refOnly)R=R.filter(x=>x.l.refId===refOnly);
+ makePdf('statement_'+n+'.pdf',refOnly?'TRANSACTION DETAILS - REF '+refOnly:'ACCOUNT STATEMENT (PASSBOOK)',['PURPOSE: '+purpose,'A/C NO: '+n+' | HOLDER: '+await decryptData(a.holderName),'MOBILE: '+a.phone+' | CURRENT BALANCE: Rs.'+bal(n).toFixed(2),who()],['DATE','TIME','IP','REF','TYPE','PARTICULARS','AMOUNT','BALANCE'],R.map(({l,r,st})=>[l.date,l.time,l.ip||'-',l.refId||'PENDING',l.type+(st==='SYNCED'?'':' *'+st),l.narrative,(+l.amount).toFixed(2),r.toFixed(2)]),m)};
+exportPassbookPdf=m=>stmtPdf($('pb-acc-input').value.trim(),'CUSTOMER PASSBOOK STATEMENT',undefined,m==='print'?m:'pdf');
+exportSearchBoxPdf=m=>{const n=window.lastFetchedAccNo;if(!n)return alert('SEARCH A RECORD FIRST');stmtPdf(n,window.lastRef?'DETAILS FOR REF ID '+window.lastRef:'SEARCH RESULT - ACCOUNT STATEMENT',window.lastRef,m==='print'?m:'pdf');closeSearchModal()};
+const printAudit=()=>exportAuditPdf('print'),printPassbook=()=>exportPassbookPdf('print'),printSearchBox=()=>exportSearchBoxPdf('print');
+document.querySelectorAll('button[onclick^="export"]').forEach(b=>{const m=/export(Audit|Passbook|SearchBox)Pdf/.exec(b.getAttribute('onclick'));if(m)b.insertAdjacentHTML('afterend',` <button class="inverted" onclick="print${m[1]}();flashButton(this)" style="${b.getAttribute('style')||''}">[ PRINT ]</button>`)});
+/* ---- VCF (full parse) + contact picker ---- */
+const p10=s=>{const d=String(s).replace(/\D/g,'');return d.length>=10?d.slice(-10):null};
+function parseVcf(t){const out=[];t.replace(/\r/g,'').replace(/\n[ \t]/g,'').split(/BEGIN:VCARD/i).slice(1).forEach(b=>{const raw='BEGIN:VCARD'+b.split(/END:VCARD/i)[0]+'END:VCARD',c={id:uid(),raw,phones:[],emails:[],adr:[],other:{},mt:Date.now()};
+ raw.split('\n').forEach(l=>{const i=l.indexOf(':');if(i<1)return;const head=l.slice(0,i),k=head.split(';')[0].split('.').pop().toUpperCase();let v=l.slice(i+1);if(/QUOTED-PRINTABLE/i.test(head)){try{v=decodeURIComponent(v.replace(/=([0-9A-F]{2})/gi,'%$1'))}catch(e){}}
+  v=v.replace(/\\n/gi,' ').replace(/\\,/g,',').replace(/\\;/g,';').trim();if(!v||['BEGIN','END','VERSION','PHOTO','LOGO'].includes(k))return;
+  if(k==='FN')c.name=v;else if(k==='N')c.n=v.replace(/;+/g,' ').trim();else if(k==='TEL')c.phones.push(v);else if(k==='EMAIL')c.emails.push(v);else if(k==='ADR')c.adr.push(v.replace(/;+/g,' ').trim());else if(k==='BDAY')c.bday=v;else if(k==='NOTE')c.note=(c.note?c.note+' | ':'')+v;else if(k==='ORG')c.org=v.replace(/;/g,' ');else if(k==='TITLE')c.title=v;else c.other[k]=(c.other[k]?c.other[k]+' | ':'')+v});
+ c.name=c.name||c.n||'UNNAMED';out.push(c)});return out}
+function reviewContacts(list){window.rc=list;db.contacts.push(...list);save();
+ modal('IMPORTED '+list.length+' CONTACT(S)',`<div style="text-align:left;max-height:50vh;overflow:auto"><label><input type="checkbox" checked onchange="document.querySelectorAll('.rcx').forEach(x=>x.checked=this.checked)" style="width:auto"> SELECT ALL</label>${list.map((c,i)=>`<label style="display:block;border-bottom:1px dashed var(--dim);padding:3px"><input type="checkbox" class="rcx" value="${i}" checked style="width:auto"> ${esc(c.name)} | ${esc(c.phones.join(', ')||'NO NUMBER')} ${esc(c.emails.join(', '))} ${esc(c.bday||'')}</label>`).join('')}</div><button class="inverted" style="width:100%;margin-top:8px" onclick="makeFromContacts()">[ CREATE SELECTED AS ACCOUNTS ]</button><p class="dim" style="font-size:.65rem">EVERY CONTACT WITH ALL ITS FIELDS IS SAVED. THOSE WITHOUT A 10-DIGIT NUMBER STAY SAVED BUT CANNOT BECOME ACCOUNTS.</p>`)}
+async function makeFromContacts(){const sel=[...document.querySelectorAll('.rcx:checked')].map(x=>window.rc[+x.value]);let n=0;const t=new Date();await getIp();
+ for(const c of sel){const p=c.phones.map(p10).find(Boolean);if(!p)continue;const a={id:uid(),accountNumber:null,holderName:await encryptData(c.name.toUpperCase()),father:'',phone:p,email:c.emails[0]||'',sms:'OFF',address:(c.adr[0]||'').toUpperCase(),balance:0,status:'APPROVED',openedAt:t.toLocaleString(),refId:null,sync:'PENDING',ts:+t+n,mt:+t,vcf:{phones:c.phones,emails:c.emails,adr:c.adr,bday:c.bday,note:c.note,org:c.org,title:c.title,other:c.other}};
+  db.accounts.push(a);db.ledger.unshift({id:uid(),seq:0,refId:null,date:t.toLocaleDateString(),time:t.toLocaleTimeString(),accId:a.id,accNo:null,type:'ACC_OPEN',amount:0,operator:session?session.id:'GUEST',narrative:'IMPORTED CONTACT',ip:window.myIp,at:t.toISOString(),status:'PENDING',ts:+t+n,mt:+t});n++}
+ closeGenericModal();save();alert(n+' ACCOUNT(S) QUEUED. WITHOUT 10-DIGIT NUMBER (KEPT AS CONTACT ONLY): '+(sel.length-n))}
+processVCF=async function(e){const fs=[...e.target.files];let all=[];for(const f of fs)all=all.concat(parseVcf(await f.text()));e.target.value='';if(!all.length)return alert('NO VCARDS FOUND IN FILE');reviewContacts(all)};
+importMultipleContacts=async function(){if(!(navigator.contacts&&navigator.contacts.select))return alert('CONTACT PICKER NEEDS ANDROID CHROME OVER HTTPS. USE VCF IMPORT INSTEAD.');
+ try{const r=await navigator.contacts.select(['name','tel','email','address'],{multiple:true});if(!r.length)return;reviewContacts(r.map(x=>({id:uid(),name:(x.name||[])[0]||'UNNAMED',phones:x.tel||[],emails:x.email||[],adr:(x.address||[]).map(a=>[a.addressLine,a.city,a.region,a.postalCode].flat().filter(Boolean).join(' ')),other:{},mt:Date.now()})))}catch(er){alert('CONTACT ACCESS DENIED OR CANCELLED. APP STILL WORKS - USE VCF IMPORT.')}};
+$('vcf-upload').multiple=true;
+/* ---- email OTP (Supabase Auth + Brevo SMTP) ---- */
+$('reg-email').insertAdjacentHTML('afterend','<label style="display:flex;gap:6px;align-items:center;font-size:.7rem;margin-top:4px"><input type="checkbox" id="reg-otp-on" style="width:auto" onchange="otpToggle()"> VERIFY EMAIL WITH OTP (OPTIONAL)</label><div id="reg-otp-box" style="display:none"><button type="button" class="inverted" id="reg-otp-send" onclick="otpSend()">[ SEND OTP ]</button><input id="reg-otp" maxlength="6" inputmode="numeric" placeholder="ENTER 6-DIGIT OTP" oninput="otpCheck()"><div id="reg-otp-msg" style="font-size:.65rem;color:var(--yellow)"></div></div>');
+function otpToggle(){$('reg-otp-box').style.display=$('reg-otp-on').checked?'':'none';window.regVerified=null;$('reg-otp-msg').innerText=''}
+async function otpSend(){const em=$('reg-email').value.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(em))return alert('ENTER A VALID EMAIL FIRST');if(!navigator.onLine)return alert('OTP NEEDS INTERNET. UNTICK THE OPTION TO REGISTER WITHOUT VERIFICATION.');
+ const m=$('reg-otp-msg'),b=$('reg-otp-send');b.disabled=true;m.innerText='SENDING OTP...';const {error}=await supabaseClient.auth.signInWithOtp({email:em,options:{shouldCreateUser:true}});
+ if(error){m.innerText='FAILED: '+error.message;b.disabled=false;return}m.innerText='OTP SENT TO '+em+'. ENTER IT BELOW.';$('reg-otp').focus();let s=60;const t=setInterval(()=>{b.innerText='RESEND IN '+(--s)+'s';if(s<=0){clearInterval(t);b.disabled=false;b.innerText='[ RESEND OTP ]'}},1000)}
+async function otpCheck(){const o=$('reg-otp');o.value=o.value.replace(/\D/g,'');if(o.value.length<6)return;const em=$('reg-email').value.trim().toLowerCase(),m=$('reg-otp-msg');m.innerText='VERIFYING...';
+ const {error}=await supabaseClient.auth.verifyOtp({email:em,token:o.value,type:'email'});if(error){m.innerText='INVALID OR EXPIRED OTP';return}window.regVerified=em;m.innerText='EMAIL VERIFIED';supabaseClient.auth.signOut()}
+{const o=submitReq;submitReq=function(r,e){r.emailVerified=!!(r.email&&window.regVerified===String(r.email).toLowerCase());setTimeout(otpToggle,800);return o(r,e)}}
+{const o=handleUserRegistration;handleUserRegistration=function(e){if($('reg-otp-on').checked&&!window.regVerified){e.preventDefault();return alert('VERIFY THE EMAIL OTP FIRST, OR UNTICK THE OPTION')}return o(e)}}
+/* ---- live password hint (dynamic from owner rule) ---- */
+function liveHint(el){const r=rule(),v=el.value,h=$('h-'+el.id);if(!h)return;h.innerHTML=!v?r.h:r.num?`${v.length}/${r.n} DIGITS`:[['8 CHARS',v.length>=8],['CAPITAL',/[A-Z]/.test(v)],['NUMBER',/\d/.test(v)],['SPECIAL',/[@#$%&*!]/.test(v)]].map(([t,ok])=>`<span style="color:${ok?'#0f0':'var(--yellow)'}">${ok?'OK':'X'} ${t}</span>`).join(' ')}
+document.addEventListener('input',e=>{if(['reg-pin','admin-new-pin'].includes(e.target.id))liveHint(e.target)});
+{const o=refreshAll;refreshAll=function(){o();applyPolicy()}}
+/* ---- inject owner data-manager ---- */
+$('panel-danger').insertAdjacentHTML('beforeend','<hr style="margin:10px 0;border-color:var(--dim)"><div class="box-title"><span>DATA MANAGER (PIN)</span></div><div class="grid-2"><select id="dm-cat"><option value="accounts">ALL ACCOUNTS (+TRANSACTIONS)</option><option value="ledger">ALL TRANSACTIONS</option><option value="chats">ALL CHATS</option><option value="recoverRequests">ALL REQUESTS</option><option value="logins">ALL LOGIN LOGS</option><option value="contacts">ALL IMPORTED CONTACTS</option><option value="users">ALL USERS (EXCEPT OWNER)</option></select><button class="btn-red" onclick="wipeCat()">[ DELETE ALL IN CATEGORY ]</button></div><div class="grid-2" style="margin-top:6px"><input id="dm-ref" maxlength="10" placeholder="REF ID TO DELETE"><button class="btn-red" onclick="delRef()">[ DELETE THIS TRANSACTION ]</button></div><div id="log-out" style="margin-top:10px"></div>');
+applyPolicy();
+
+</script>
+<script>
+/* ===== PATCH v15: reports + formula categories ===== */
+KEYS.push('txCats');
+const BUILT=[{id:'cat_CR',code:'CR',name:'CREDIT',formula:'A'},{id:'cat_DR',code:'DR',name:'DEBIT',formula:'-A'}];
+const allCats=()=>[...BUILT,...db.txCats.filter(c=>!BUILT.some(b=>b.code===c.code))];
+const catOf=c=>allCats().find(x=>x.code===c);
+function calcF(f,A,B){f=String(f||'');if(!/^[\w\s+\-*/%().,<>=!?:&|]+$/.test(f))return null;
+ if((f.match(/[A-Za-z_]+/g)||[]).some(x=>!['A','B','min','max','round','abs','floor','ceil','pow','sqrt'].includes(x)))return null;
+ try{const v=new Function('A','B','min','max','round','abs','floor','ceil','pow','sqrt','"use strict";return ('+f+')')(A,B,Math.min,Math.max,(x,d=0)=>Math.round(x*10**d)/10**d,Math.abs,Math.floor,Math.ceil,Math.pow,Math.sqrt);return Number.isFinite(v)?Math.round(v*100)/100:null}catch(e){return null}}
+const calcCat=(code,A,B)=>{const c=catOf(code);return c?calcF(c.formula,A,B):null};
+function fillTypes(){const cs=allCats(),sig=cs.map(c=>c.code+c.name).join('|');if(window.__ts===sig)return;window.__ts=sig;
+ [['tx-type',''],['rp-cat','<option value="">ALL CATEGORIES</option>']].forEach(([id,first])=>{const s=$(id),v=s.value;s.innerHTML=first+cs.map(c=>`<option value="${c.code}">${c.code} - ${esc(c.name)}</option>`).join('');if([...s.options].some(o=>o.value===v))s.value=v})}
+function ctTest(){const f=$('ct-f').value,r=calcF(f,1000,5000);$('ct-test').innerText=!f?'':r===null?'FORMULA INVALID':`TEST: A=1000, B=5000  =>  BALANCE CHANGE ${r>=0?'+':''}${r.toFixed(2)}`}
+function ctAdd(){if(!isOwner())return;const code=$('ct-code').value.trim(),name=$('ct-name').value.trim().toUpperCase(),f=$('ct-f').value.trim();
+ if(code.length<2)return alert('CODE: 2-6 LETTERS/NUMBERS');if(!name)return alert('ENTER A NAME');if(catOf(code))return alert('CODE ALREADY EXISTS');if(calcF(f,100,1000)===null)return alert('FORMULA INVALID. SEE EXAMPLES BELOW THE BOX.');
+ db.txCats.push({id:uid(),code,name,formula:f,mt:Date.now()});['ct-code','ct-name','ct-f'].forEach(i=>$(i).value='');$('ct-test').innerText='';save();$('ct-code').focus()}
+function ctEdit(id){if(!isOwner())return;const c=db.txCats.find(x=>x.id===id);if(!c)return;const f=prompt('NEW FORMULA FOR '+c.code+' (A = AMOUNT, B = BALANCE):',c.formula);if(f===null)return;if(calcF(f,100,1000)===null)return alert('FORMULA INVALID');if(!askPin())return;c.formula=f.trim();c.mt=Date.now();save();alert('SAVED. APPLIES TO NEW TRANSACTIONS ONLY; OLD ENTRIES KEEP THEIR RESULT.')}
+function ctDel(id){if(!isOwner()||!askPin())return;db.dead.push(id);db.txCats=db.txCats.filter(x=>x.id!==id);save()}
+function renderCats(){if(!$('panel-cats').offsetParent)return;$('body-cats').innerHTML=BUILT.map(c=>`<tr><td>${c.code}</td><td>${c.name}</td><td>${c.formula}</td><td>BUILT-IN</td></tr>`).join('')+db.txCats.map(c=>`<tr><td>${esc(c.code)}</td><td>${esc(c.name)}</td><td>${esc(c.formula)}</td><td><button onclick="ctEdit('${c.id}')">EDIT</button> <button onclick="ctDel('${c.id}')">DEL</button></td></tr>`).join('')}
+function rng(p){const n=new Date(),d0=new Date(n.getFullYear(),n.getMonth(),n.getDate());let a,b;
+ if(p==='day'){a=d0;b=new Date(+d0+864e5)}else if(p==='week'){a=new Date(+d0-((d0.getDay()+6)%7)*864e5);b=new Date(+a+7*864e5)}else if(p==='month'){a=new Date(n.getFullYear(),n.getMonth(),1);b=new Date(n.getFullYear(),n.getMonth()+1,1)}else if(p==='year'){a=new Date(n.getFullYear(),0,1);b=new Date(n.getFullYear()+1,0,1)}
+ else{const f=$('rp-from').value,t=$('rp-to').value;if(!f||!t)return null;a=new Date(f+'T00:00:00');b=new Date(+new Date(t+'T00:00:00')+864e5);if(b<=a)return null}return [a,b]}
+async function repData(){const p=$('rp-per').value,R=rng(p);if(!R)return null;const acc=$('rp-acc').value.trim(),cat=$('rp-cat').value,nm={};for(const a of db.accounts)nm[a.accountNumber]=await decryptData(a.holderName);
+ const ts=l=>l.ts||Date.parse(l.date)||0,L=db.ledger.filter(l=>l.type!=='ACC_OPEN'&&eff(l)&&ts(l)>=+R[0]&&ts(l)<+R[1]&&(!acc||l.accNo===acc)&&(!cat||l.type===cat)).sort((x,y)=>ts(x)-ts(y));
+ let cr=0,dr=0;const by={};L.forEach(l=>{const d=dl(l);if(d>0)cr+=d;else dr-=d;const b=by[l.type]=by[l.type]||{n:0,s:0};b.n++;b.s+=d});
+ return {L,nm,cr,dr,by,acc,cat,lab:({day:'DAILY',week:'WEEKLY',month:'MONTHLY',year:'YEARLY',range:'DATE RANGE'})[p]+': '+R[0].toLocaleDateString()+' TO '+new Date(+R[1]-1).toLocaleDateString()}}
+const REPH=['DATE','TIME','REF','ACC','NAME','TYPE','AMOUNT','EFFECT','IP','OPERATOR'];
+const repRows=d=>d.L.map(l=>[l.date,l.time,l.refId||'PENDING',l.accNo,d.nm[l.accNo]||'',l.type,(+l.amount).toFixed(2),(dl(l)>=0?'+':'')+dl(l).toFixed(2),l.ip||'-',l.operator]);
+const sgn=v=>(v>=0?'+':'')+v.toFixed(2);
+function rpPer(){$('rp-range').style.display=$('rp-per').value==='range'?'grid':'none';repRender()}
+async function repRender(){const o=$('rp-out');if(!$('panel-report').offsetParent)return;const d=await repData();
+ if(!d){o.innerHTML='<div style="padding:8px;color:var(--yellow)">'+($('rp-per').value==='range'?'SELECT A VALID FROM AND TO DATE':'')+'</div>';return}
+ o.innerHTML=`<div style="padding:6px;border:1px dashed var(--dim);margin:6px 0"><b>${d.lab}</b><br>ENTRIES: ${d.L.length} | CREDIT: ${d.cr.toFixed(2)} | DEBIT: ${d.dr.toFixed(2)} | NET: ${sgn(d.cr-d.dr)}<br><span class="dim">${Object.entries(d.by).map(([k,v])=>`${k}: ${v.n} / ${sgn(v.s)}`).join(' | ')||'NO TRANSACTIONS'}</span></div><div class="table-container"><table><thead><tr>${REPH.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${repRows(d).map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="10" style="text-align:center">NO DATA</td></tr>'}</tbody></table></div>`}
+async function repExport(m){const d=await repData();if(!d)return alert('SELECT A VALID PERIOD / DATE RANGE FIRST');
+ makePdf('report_'+$('rp-per').value+'.pdf','TRANSACTION REPORT - '+d.lab.split(':')[0],['PURPOSE: '+d.lab,'FILTERS: ACCOUNT '+(d.acc||'ALL')+' | CATEGORY '+(d.cat||'ALL'),`ENTRIES: ${d.L.length} | CREDIT: Rs.${d.cr.toFixed(2)} | DEBIT: Rs.${d.dr.toFixed(2)} | NET: Rs.${sgn(d.cr-d.dr)}`,...Object.entries(d.by).map(([k,v])=>`  ${k}: ${v.n} ENTRIES, NET ${sgn(v.s)}`),who()],REPH,repRows(d),m)}
+$('panel-danger').insertAdjacentHTML('beforebegin',`<div id="panel-report" class="admin-sub-panel"><div class="box-title"><span>TRANSACTION REPORT</span><button onclick="closeAdminSubPanels()" style="font-size:.6rem;padding:2px 6px">[CLOSE]</button></div>
+<div class="grid-3"><select id="rp-per" onchange="rpPer()"><option value="day">DAILY (TODAY)</option><option value="week">WEEKLY (THIS WEEK)</option><option value="month">MONTHLY (THIS MONTH)</option><option value="year">YEARLY (THIS YEAR)</option><option value="range">DATE RANGE</option></select><input id="rp-acc" inputmode="numeric" maxlength="11" placeholder="ACC NO (OPTIONAL)" oninput="this.value=this.value.replace(/\\D/g,'');repRender()"><select id="rp-cat" onchange="repRender()"></select></div>
+<div id="rp-range" class="grid-2" style="display:none;margin-top:4px"><input type="date" id="rp-from" onchange="repRender()"><input type="date" id="rp-to" onchange="repRender()"></div>
+<div class="grid-2" style="margin-top:6px"><button class="inverted" onclick="repExport('pdf')">[ DOWNLOAD PDF ]</button><button class="inverted" onclick="repExport('print')">[ PRINT ]</button></div><div id="rp-out"></div></div>
+<div id="panel-cats" class="admin-sub-panel"><div class="box-title"><span>TRANSACTION CATEGORIES</span><button onclick="closeAdminSubPanels()" style="font-size:.6rem;padding:2px 6px">[CLOSE]</button></div>
+<div class="grid-2"><input id="ct-code" maxlength="6" placeholder="CODE e.g. FEE" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"><input id="ct-name" placeholder="NAME e.g. SERVICE FEE"></div>
+<input id="ct-f" placeholder="FORMULA e.g. -(A*0.02)" oninput="ctTest()" style="margin-top:4px" autocomplete="off"><div id="ct-test" style="color:var(--yellow);font-size:.7rem;margin:3px 0"></div>
+<button class="inverted" style="width:100%" onclick="ctAdd()">[ ADD CATEGORY ]</button>
+<p class="dim" style="font-size:.62rem;margin:6px 0">A = AMOUNT ENTERED, B = CURRENT BALANCE. THE RESULT IS THE CHANGE TO THE BALANCE (+ ADDS, - SUBTRACTS). ALLOWED: + - * / % ( ) min() max() round(x,d) abs() floor() ceil() pow() sqrt() AND a&gt;b?x:y. EXAMPLES: A (ADD) | -A (SUBTRACT) | -(A*0.02) (2% FEE) | A*1.1 (10% BONUS) | -max(A*0.01,5) (1%, MIN 5) | A&gt;1000?A*0.05:0</p>
+<div class="table-container"><table><thead><tr><th>CODE</th><th>NAME</th><th>FORMULA</th><th></th></tr></thead><tbody id="body-cats"></tbody></table></div></div>`);
+document.querySelector('#s7-common .admin-menu-grid').insertAdjacentHTML('beforeend','<button class="inverted" onclick="openAdminSubPanel(\'panel-report\')">[10] TRANSACTION REPORTS</button><button class="inverted" id="s7-cats-btn" onclick="openAdminSubPanel(\'panel-cats\')">[11] TX CATEGORIES</button>');
+{const o=openAdminSubPanel;openAdminSubPanel=function(id){if(id==='panel-report'&&!can('audit'))return alert('NOT ALLOWED FOR YOUR ROLE');if(id==='panel-cats'&&!isOwner())return alert('OWNER ONLY');const r=o.apply(this,arguments);if(id==='panel-report')repRender();if(id==='panel-cats')renderCats();return r}}
+{const o=refreshAll;refreshAll=function(){o();fillTypes();$('s7-cats-btn').style.display=isOwner()?'':'none';renderCats();repRender()}}
+fillTypes();
+
+</script>
+<script>
+/* ===== PATCH v16: search-open fix, Email toggle, Brevo OTP + notifications (via Supabase function "mail") ===== */
+{const o=openSearchModal;openSearchModal=function(){const r=o.apply(this,arguments);onSearchCriteriaChange();return r}}
+['acc-sms','edit-sms'].forEach(id=>$(id).insertAdjacentHTML('afterend',`<select id="${id==='acc-sms'?'acc-emailon':'edit-emailon'}" style="margin-top:4px"><option value="OFF">EMAIL ALERTS: OFF</option><option value="ON">EMAIL ALERTS: ON</option></select>`));
+async function mailCall(body){try{const r=await supabaseClient.functions.invoke('mail',{body});if(r.error||!r.data)return {ok:false,msg:'FUNCTION NOT REACHABLE'};return r.data}catch(e){return {ok:false,msg:'FUNCTION NOT REACHABLE'}}}
+otpSend=async function(){const em=$('reg-email').value.trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(em))return alert('ENTER A VALID EMAIL FIRST');if(!navigator.onLine)return alert('OTP NEEDS INTERNET. UNTICK THE OPTION TO REGISTER WITHOUT VERIFICATION.');
+ const m=$('reg-otp-msg'),b=$('reg-otp-send');b.disabled=true;m.innerText='SENDING OTP...';const r=await mailCall({action:'otp-send',email:em});
+ if(!r.ok){m.innerText=r.limit?'EMAIL LIMIT REACHED TODAY. TRY LATER OR REGISTER WITHOUT VERIFICATION.':'FAILED: '+(r.msg||'');b.disabled=false;return}
+ m.innerText='OTP SENT TO '+em+'. ENTER IT BELOW.';$('reg-otp').focus();let s=45;const t=setInterval(()=>{b.innerText='RESEND IN '+(--s)+'s';if(s<=0){clearInterval(t);b.disabled=false;b.innerText='[ RESEND OTP ]'}},1000)};
+otpCheck=async function(){const o=$('reg-otp');o.value=o.value.replace(/\D/g,'');if(o.value.length<6)return;const em=$('reg-email').value.trim().toLowerCase(),m=$('reg-otp-msg');m.innerText='VERIFYING...';
+ const r=await mailCall({action:'otp-verify',email:em,code:o.value});if(!r.ok){m.innerText=r.msg||'INVALID OR EXPIRED OTP';return}window.regVerified=em;m.innerText='EMAIL VERIFIED'};
+/* queue: emails go out only after the record is synced (server re-checks it in the database) */
+async function mailQueue(){if(!navigator.onLine||window.__mq||Date.now()<(window.__mnext||0))return;window.__mq=1;let ch=0;
+ try{const jobs=[...db.ledger.filter(l=>l.mailReq&&!l.mailed&&l.status==='SYNCED'&&l.refId).map(l=>[l,{kind:l.type==='ACC_OPEN'?'acc':'tx',refId:l.refId}]),...db.recoverRequests.filter(r=>r.type==='REG'&&r.email&&!r.mailed&&['APPROVED','REJECTED'].includes(r.status)&&r.refId).map(r=>[r,{kind:'req',refId:r.refId}])];
+  for(const [x,p] of jobs){const r=await mailCall({action:'notify',...p});if(r.ok){x.mailed=true;x.mt=Date.now();ch=1}else{window.__mnext=Date.now()+(r.limit?36e5:6e4);break}}
+  if(ch)save()}finally{window.__mq=0}}
+{const o=syncNow;syncNow=async function(){const ok=await o.apply(this,arguments);if(ok)mailQueue();return ok}}
+
+</script>
+<script>
+/* ===== PATCH v17: SMS from user's own phone + saved PDF settings with owner lock ===== */
+FEAT.sms='SEND SMS (FROM OWN PHONE)';
+function smsOffer(l,a){a=a||db.accounts.find(x=>x.accountNumber===l.accNo);if(!a||String(a.sms).toUpperCase()!=='ON'||!can('sms')||!a.phone)return;
+ const n=a.accountNumber?String(a.accountNumber).slice(-4):'----',msg=l?`${l.type} Rs.${(+l.amount).toFixed(2)} on A/C ...${n}. Bal Rs.${bal(a.accountNumber).toFixed(2)}.${l.refId?' Ref '+l.refId+'.':''} ${l.date}`:`Your account ${a.accountNumber||'(number pending)'} is opened.`;
+ if(confirm('SEND SMS TO '+a.phone+' FROM THIS PHONE?\n\n'+msg))location.href='sms:'+a.phone+(/iPhone|iPad/.test(navigator.userAgent)?'&':'?')+'body='+encodeURIComponent(msg)}
+{const o=processTx;processTx=async function(e){const b=db.ledger[0]&&db.ledger[0].id;await o(e);const l=db.ledger[0];if(l&&l.id!==b&&l.status!=='FAILED')smsOffer(l)}}
+{const o=manualAccount;manualAccount=async function(e){const n=db.accounts.length;await o(e);if(db.accounts.length>n)smsOffer(null,db.accounts[db.accounts.length-1])}}
+/* ---- PDF settings: saved per user, no popup on generate; owner can lock columns for others ---- */
+const PCOLS={audit:['SEQ','REF','DATE','TIME','IP','ACC','TYPE','AMOUNT','STATUS','OPERATOR'],stmt:['DATE','TIME','IP','REF','TYPE','PARTICULARS','AMOUNT','BALANCE'],report:REPH};
+const pdfKey=f=>f.startsWith('statement_')?'stmt':f.startsWith('report_')?'report':'audit';
+const pkey=k=>'PDFS_'+(session?session.id:'')+'_'+k,pset=k=>{try{return JSON.parse(localStorage[pkey(k)]||'{}')}catch(e){return {}}};
+makePdf=function(file,title,info,head,rows,mode){const k=pdfKey(file),P=pset(k),pol=(db.settings.pdfPol||{})[k],own=isOwner();
+ const ok=h=>!(P.off||[]).includes(h)&&(own||!pol||pol.includes(h)),ix=head.map((h,i)=>i).filter(i=>ok(head[i]));
+ if(!ix.length)return alert('ALL COLUMNS ARE OFF / LOCKED IN PDF SETTINGS');const inf=ok('#DETAILS')?info:[],H=ix.map(i=>head[i]),R=rows.map(r=>ix.map(i=>r[i]));
+ if(mode==='print')printDoc(title,inf,H,R);else{const a=document.createElement('a');a.href=URL.createObjectURL(pdfBuild(title,inf,H,R));a.download=file;document.body.appendChild(a);a.click();a.remove()}};
+function pdfSet(k){const P=pset(k),pol=(db.settings.pdfPol||{})[k],own=isOwner();
+ modal('PDF / PRINT SETTINGS',`<div style="text-align:left;max-height:55vh;overflow:auto">${own?'<div class="dim" style="font-size:.65rem;margin-bottom:4px">LEFT TICK = SHOW IN MY PDF. "OTHERS" TICK = ALLOW OTHER USERS TO USE IT (UNTICK TO LOCK IT FOR THEM).</div>':'<div class="dim" style="font-size:.65rem;margin-bottom:4px">SAVED FOR YOU. APPLIES TO EVERY PDF / PRINT OF THIS TYPE.</div>'}${['#DETAILS',...PCOLS[k]].map(c=>{const al=own||!pol||pol.includes(c);return `<div style="display:flex;gap:10px;padding:2px;${al?'':'opacity:.45'}"><label style="flex:1"><input type="checkbox" class="ps-on" value="${esc(c)}" style="width:auto" ${!al||(P.off||[]).includes(c)?'':'checked'} ${al?'':'disabled'}> ${c==='#DETAILS'?'DETAILS BLOCK':esc(c)}</label>${own?`<label><input type="checkbox" class="ps-al" value="${esc(c)}" style="width:auto" ${!pol||pol.includes(c)?'checked':''}> OTHERS</label>`:al?'':'<span class="dim">LOCKED BY OWNER</span>'}</div>`}).join('')}</div><button class="inverted" style="width:100%;margin-top:8px" onclick="pdfSave('${k}')">[ SAVE SETTINGS ]</button>`)}
+function pdfSave(k){const cols=['#DETAILS',...PCOLS[k]],P=pset(k),on=[...document.querySelectorAll('.ps-on:checked')].map(x=>x.value),dis=[...document.querySelectorAll('.ps-on:disabled')].map(x=>x.value);
+ if(!on.length&&!dis.length)return alert('KEEP AT LEAST ONE ITEM ON');
+ if(isOwner()){const al=[...document.querySelectorAll('.ps-al:checked')].map(x=>x.value),cur=(db.settings.pdfPol||{})[k]||cols;if(JSON.stringify([...al].sort())!==JSON.stringify([...cur].sort())){if(!askPin())return;db.settings.pdfPol=db.settings.pdfPol||{};if(al.length===cols.length)delete db.settings.pdfPol[k];else db.settings.pdfPol[k]=al;db.settings.mt=Date.now();save()}}
+ localStorage[pkey(k)]=JSON.stringify({off:cols.filter(c=>!on.includes(c)&&!dis.includes(c)).concat((P.off||[]).filter(c=>dis.includes(c)))});closeGenericModal()}
+{const G=k=>`<button class="inverted" title="PDF SETTINGS" onclick="pdfSet('${k}')" style="padding:1px 5px;font-size:.6rem;width:auto;min-width:0">&#9881;</button>`,M={printAudit:'audit',printPassbook:'stmt',printSearchBox:'stmt'};
+ document.querySelectorAll('button[onclick^="print"]').forEach(b=>{const m=/^(print(Audit|Passbook|SearchBox))/.exec(b.getAttribute('onclick'));if(m)b.insertAdjacentHTML('afterend',' '+G(M[m[1]]))});
+ $('panel-report').querySelector('.box-title span').insertAdjacentHTML('afterend',' '+G('report'))}
+
+</script>
+<script>
+/* ===== PATCH v18: instant "PROCESSING" feedback, message badge fix, chat recipient pick/search ===== */
+$('page-chat').insertAdjacentHTML('beforebegin','<div id="toast" style="display:none;position:fixed;left:50%;bottom:70px;transform:translateX(-50%);z-index:99998;background:#000;color:var(--yellow);border:1px solid var(--yellow);padding:8px 16px;font-weight:bold;max-width:90%;text-align:center"></div>');
+function toast(m){const t=$('toast');t.innerText=m;t.style.display=m?'block':'none'}
+['processTx','manualAccount','handleUserRegistration','handleRecoverySubmission','sendChatMessage','adminCreateUser','saveAccEdit','handleLogon'].forEach(n=>{const o=window[n];
+ window[n]=async function(e){const f=e&&e.target,b=f&&f.querySelector?f.querySelector('button[type=submit]'):null,t=b&&b.innerText;if(b){b.disabled=true;b.innerText='PROCESSING...'}toast('PROCESSING... PLEASE WAIT');
+  try{return await o.apply(this,arguments)}finally{toast('');if(b){b.disabled=false;b.innerText=t}}}});
+/* ---- chat: recipient can be picked from a list or searched ---- */
+let chTo='STAFF';window.curPage='';
+$('ch-mode').options[0].insertAdjacentHTML('afterend','<option value="user">STAFF USER (PICK / SEARCH)</option>');
+$('ch-target').insertAdjacentHTML('afterend','<datalist id="ch-dl"></datalist>');
+chMode=async function(){const m=$('ch-mode').value,t=$('ch-target');t.value='';chTo=m==='STAFF'?'STAFF':null;$('ch-label').value=m==='STAFF'?'ALL STAFF':'';t.style.display=m==='STAFF'?'none':'';
+ t.maxLength=m==='acc'?11:m==='mob'?10:40;t.inputMode=(m==='acc'||m==='mob')?'numeric':'text';t.placeholder=m==='acc'?'11-DIGIT ACC NO':m==='mob'?'10-DIGIT MOBILE':m==='user'?'PICK OR SEARCH USER ID / NAME':'PICK OR SEARCH HOLDER NAME';
+ let dl='';if(m==='user')dl=db.users.filter(u=>u.id!==session.id).map(u=>`<option value="${esc(u.id)}">${esc(u.name||u.role)}</option>`).join('');
+ if(m==='name')for(const a of db.accounts)dl+=`<option value="${esc(await decryptData(a.holderName))}"></option>`;
+ $('ch-dl').innerHTML=dl;if(m==='user'||m==='name')t.setAttribute('list','ch-dl');else t.removeAttribute('list');renderChat();if(m!=='STAFF')t.focus()};
+chTarget=async function(){const m=$('ch-mode').value,t=$('ch-target');if(m==='acc'||m==='mob')t.value=t.value.replace(/\D/g,'');const v=t.value.trim().toUpperCase();chTo=null;let lab='';
+ if(m==='user'){const u=db.users.find(x=>x.id.toUpperCase()===v)||(v.length>1?db.users.find(x=>x.id!==session.id&&(x.id.toUpperCase().includes(v)||String(x.name||'').toUpperCase().includes(v))):null);if(u&&u.id!==session.id){chTo='U:'+u.id;lab=u.id+' ('+u.role+')'}}
+ else{let a=null;if(m==='acc'&&v.length===11)a=db.accounts.find(x=>x.accountNumber===v);if(m==='mob'&&v.length===10)a=db.accounts.find(x=>x.phone===v);
+  if(m==='name'&&v.length>1)for(const x of db.accounts)if((await decryptData(x.holderName)).toUpperCase().includes(v)){a=x;break}
+  if(a){chTo=a.accountNumber;lab=a.accountNumber+' '+await decryptData(a.holderName)}}
+ $('ch-label').value=chTo?lab:(v?'NOT FOUND':'');renderChat()};
+sendChatMessage=async function(e){e.preventDefault();const i=$('chat-input-msg');if(!i.value.trim()||!session)return;if(!chTo)return alert('SELECT A VALID RECIPIENT FIRST');
+ db.chats.push({id:uid(),sender:session.id,to:chTo,text:await encryptData(i.value.trim()),time:new Date().toLocaleTimeString(),ts:Date.now(),mt:Date.now(),sync:'PENDING'});i.value='';save();i.focus()};
+/* ---- badge: counts unread from others; "open" = chat page is really the current page ---- */
+renderChat=async function(){const c=$('chat-messages-container');if(!c||!session)return;const me=session.id,key='CHSEEN_'+me,open=window.curPage==='page-chat';
+ if(localStorage[key]===undefined)localStorage[key]=Date.now();const seen=+localStorage[key];
+ const vis=x=>!String(x.to).startsWith('U:')||x.sender===me||x.to==='U:'+me,un=db.chats.filter(x=>vis(x)&&x.sender!==me&&(x.ts||0)>seen).length;
+ $('msg-badge').innerText=open?0:un;if(!open)return;localStorage[key]=Date.now();
+ const dm=chTo&&chTo.startsWith('U:')?chTo.slice(2):null,L=!chTo?[]:db.chats.filter(x=>dm?((x.sender===me&&x.to===chTo)||(x.sender===dm&&x.to==='U:'+me)):x.to===chTo).sort((a,b)=>(a.ts||0)-(b.ts||0));let h='';
+ for(const x of L)h+=`<div style="background:#111;padding:6px;border:1px solid var(--dim)"><b>${esc(x.sender)}</b> @ ${esc(x.time)}${x.sync==='PENDING'?' <span class="dim">[PENDING]</span>':''}<br>${esc(await decryptData(x.text))}</div>`;
+ c.innerHTML=h||'<div style="text-align:center;color:var(--dim)">'+(chTo?'NO MESSAGES':'SELECT A RECIPIENT')+'</div>';c.scrollTop=c.scrollHeight};
+{const o=showPage;showPage=function(id){const prev=window.curPage;window.curPage=id;if(id==='page-chat'&&!can('chat'))window.curPage=prev;const r=o.apply(this,arguments);renderChat();return r}}
+
+</script>
+<script>
+/* ===== PATCH v19: FULL DETAILS in search ===== */
+$('autofill-extra-desc').parentElement.insertAdjacentHTML('afterend','<div style="text-align:right;margin-top:6px"><button class="inverted" onclick="showFull()" style="width:auto;padding:4px 10px;font-size:.7rem">[ FULL DETAILS ]</button></div>');
+async function showFull(){const n=window.lastFetchedAccNo,a=n&&db.accounts.find(x=>x.accountNumber===n);if(!a)return alert('SEARCH A RECORD FIRST');
+ const nm=await decryptData(a.holderName),ct=db.contacts.find(x=>(x.phones||[]).some(p=>p10(p)===a.phone)),k=ct||a.vcf||{},L=db.ledger.filter(l=>l.accNo===n&&l.type!=='ACC_OPEN'&&eff(l));
+ let cr=0,dr=0;L.forEach(l=>{const d=dl(l);d>0?cr+=d:dr-=d});
+ const tel=(k.phones&&k.phones.length?k.phones:[a.phone]).map(p=>`<a href="tel:${esc(p)}" style="color:var(--yellow)">${esc(p)}</a>`).join('<br>'),lt=L[0];
+ const R=[['A/C NO',esc(n)],['OPENING REF ID',esc(a.refId||'PENDING')],['HOLDER',esc(nm)],['FATHER / SPOUSE',esc(a.father)],['PRIMARY MOBILE',esc(a.phone)],['ALL MOBILE NUMBERS ('+(k.phones||[a.phone]).length+')',tel],
+  ['EMAIL',esc(a.email)],['ALL EMAILS',esc((k.emails||[]).join(', '))],['ADDRESS',esc(a.address)],['OTHER ADDRESSES',esc((k.adr||[]).join(' | '))],['DATE OF BIRTH',esc(k.bday)],['NOTES',esc(k.note)],['ORGANISATION',esc(k.org)],['JOB TITLE',esc(k.title)],
+  ...Object.entries(k.other||{}).map(([x,y])=>[esc(x),esc(y)]),['STATUS',esc(a.status)],['SMS ALERTS',esc(a.sms)],['EMAIL ALERTS',a.emailOn?'ON':'OFF'],['OPENED',esc(a.openedAt)],['BALANCE','Rs.'+bal(n).toFixed(2)],
+  ['TRANSACTIONS',L.length],['TOTAL CREDIT','Rs.'+cr.toFixed(2)],['TOTAL DEBIT','Rs.'+dr.toFixed(2)],['LAST TRANSACTION',lt?esc(`${lt.type} ${(+lt.amount).toFixed(2)} | ${lt.date} ${lt.time} | REF ${lt.refId||'PENDING'}`):''],['LAST TX IP',esc(lt&&lt.ip)]].filter(r=>r[1]!==''&&r[1]!==undefined&&r[1]!==null);
+ const raw=ct&&ct.raw?ct.raw.split('\n').filter(l=>!/^(PHOTO|LOGO)/i.test(l)).join('\n').slice(0,4000):'';
+ modal('FULL DETAILS - '+n,`<div style="text-align:left;max-height:62vh;overflow:auto;font-size:.75rem"><table style="width:100%">${R.map(r=>`<tr><td class="dim" style="vertical-align:top;white-space:nowrap;padding-right:8px">${r[0]}</td><td style="word-break:break-word">${r[1]}</td></tr>`).join('')}</table>
+ <b>LAST 10 TRANSACTIONS</b><div>${L.slice(0,10).map(l=>`<div style="border-bottom:1px dashed var(--dim);padding:2px">${esc(l.date)} ${esc(l.type)} ${(+l.amount).toFixed(2)} | ${l.refId||'PENDING'}</div>`).join('')||'NONE'}</div>
+ ${raw?`<details style="margin-top:6px"><summary>ORIGINAL VCARD DATA</summary><pre style="white-space:pre-wrap;word-break:break-all">${esc(raw)}</pre></details>`:''}</div><button class="inverted" style="width:100%;margin-top:8px" onclick="closeGenericModal()">[ CLOSE ]</button>`)}
+
+</script>
 </body>
 </html>
